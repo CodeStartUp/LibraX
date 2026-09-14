@@ -100,44 +100,56 @@ pub fn assess_blast_radius(
         inventory.asset_by_name(&entity.name).map(|a| a.role)
     };
 
-    let users = assets
-        .iter()
-        .filter(|a| matches!(a.entity.kind, EntityKind::User | EntityKind::Account))
-        .count() as u32;
-
-    let endpoints = assets
-        .iter()
-        .filter(|a| role_of(&a.entity) == Some(AssetRole::Workstation))
-        .count() as u32;
-
-    let servers = assets
-        .iter()
-        .filter(|a| {
-            matches!(
-                role_of(&a.entity),
-                Some(
-                    AssetRole::Server
-                        | AssetRole::DomainController
-                        | AssetRole::CloudWorkload
-                        | AssetRole::Firewall
-                )
+    let is_user =
+        |a: &AffectedAsset| matches!(a.entity.kind, EntityKind::User | EntityKind::Account);
+    let is_endpoint = |a: &AffectedAsset| role_of(&a.entity) == Some(AssetRole::Workstation);
+    let is_server = |a: &AffectedAsset| {
+        matches!(
+            role_of(&a.entity),
+            Some(
+                AssetRole::Server
+                    | AssetRole::DomainController
+                    | AssetRole::CloudWorkload
+                    | AssetRole::Firewall
             )
-        })
-        .count() as u32;
+        )
+    };
+    let is_critical_db =
+        |a: &AffectedAsset| role_of(&a.entity) == Some(AssetRole::Database) && a.criticality >= 90;
+    let is_pacs = |a: &AffectedAsset| role_of(&a.entity) == Some(AssetRole::Pacs);
 
-    let critical_databases = assets
-        .iter()
-        .filter(|a| role_of(&a.entity) == Some(AssetRole::Database) && a.criticality >= 90)
-        .count() as u32;
+    let count = |f: &dyn Fn(&AffectedAsset) -> bool| assets.iter().filter(|a| f(a)).count() as u32;
+    let count_confirmed = |f: &dyn Fn(&AffectedAsset) -> bool| {
+        assets
+            .iter()
+            .filter(|a| a.exposure == Exposure::Confirmed && f(a))
+            .count() as u32
+    };
 
-    let pacs_systems = assets
-        .iter()
-        .filter(|a| role_of(&a.entity) == Some(AssetRole::Pacs))
-        .count() as u32;
+    let users = count(&is_user);
+    let endpoints = count(&is_endpoint);
+    let servers = count(&is_server);
+    let critical_databases = count(&is_critical_db);
+    let pacs_systems = count(&is_pacs);
 
     let potentially_reachable = assets
         .iter()
         .filter(|a| a.exposure != Exposure::Confirmed)
+        .count() as u32;
+
+    // The severity of the blast radius is driven by what is actually compromised.
+    // Counting merely-reachable assets here would let campus co-location alone
+    // report a critical blast radius for an incident that breached nothing.
+    let confirmed = ConfirmedCounts {
+        users: count_confirmed(&is_user),
+        endpoints: count_confirmed(&is_endpoint),
+        servers: count_confirmed(&is_server),
+        critical_databases: count_confirmed(&is_critical_db),
+        pacs_systems: count_confirmed(&is_pacs),
+    };
+    let high_value_reachable = assets
+        .iter()
+        .filter(|a| a.exposure != Exposure::Confirmed && a.criticality >= POTENTIAL_CRITICALITY_FLOOR)
         .count() as u32;
 
     // Most severe first, so the panel leads with what matters.
@@ -155,21 +167,90 @@ pub fn assess_blast_radius(
         critical_databases,
         pacs_systems,
         potentially_reachable,
-        level: level(critical_databases, pacs_systems, servers, endpoints),
+        level: level(&confirmed, high_value_reachable),
         assets,
     }
 }
 
-fn level(critical_databases: u32, pacs: u32, servers: u32, endpoints: u32) -> Severity {
-    if critical_databases >= 1 && (pacs >= 1 || servers >= 2) {
+/// Counts restricted to assets the evidence places inside the intrusion.
+struct ConfirmedCounts {
+    users: u32,
+    endpoints: u32,
+    servers: u32,
+    critical_databases: u32,
+    pacs_systems: u32,
+}
+
+fn level(confirmed: &ConfirmedCounts, high_value_reachable: u32) -> Severity {
+    let base = if confirmed.critical_databases >= 1
+        && (confirmed.pacs_systems >= 1 || confirmed.servers >= 2)
+    {
         Severity::Critical
-    } else if critical_databases >= 1 || servers >= 3 {
+    } else if confirmed.critical_databases >= 1 || confirmed.servers >= 3 {
         Severity::High
-    } else if servers >= 1 || endpoints >= 3 {
+    } else if confirmed.servers >= 1 || confirmed.endpoints >= 3 {
         Severity::Medium
-    } else if endpoints >= 1 {
+    } else if confirmed.endpoints >= 1 || confirmed.users >= 1 {
         Severity::Low
     } else {
         Severity::Info
+    };
+
+    // High-value neighbours raise the floor to Medium, and no further. They are
+    // adjacent, not breached, and campus co-location is weak evidence of reach.
+    if high_value_reachable >= 2 && base < Severity::Medium {
+        Severity::Medium
+    } else {
+        base
+    }
+}
+
+#[cfg(test)]
+mod level_tests {
+    use super::*;
+
+    fn counts() -> ConfirmedCounts {
+        ConfirmedCounts {
+            users: 0,
+            endpoints: 0,
+            servers: 0,
+            critical_databases: 0,
+            pacs_systems: 0,
+        }
+    }
+
+    #[test]
+    fn a_breached_patient_database_beside_other_servers_is_critical() {
+        let confirmed = ConfirmedCounts {
+            critical_databases: 1,
+            servers: 2,
+            ..counts()
+        };
+        assert_eq!(level(&confirmed, 4), Severity::Critical);
+    }
+
+    #[test]
+    fn reachable_neighbours_alone_never_reach_critical() {
+        // A gateway flood: one server confirmed, high-value assets merely nearby.
+        let confirmed = ConfirmedCounts {
+            servers: 1,
+            ..counts()
+        };
+        assert_eq!(level(&confirmed, 8), Severity::Medium);
+    }
+
+    #[test]
+    fn nothing_confirmed_and_nothing_nearby_is_info() {
+        assert_eq!(level(&counts(), 0), Severity::Info);
+    }
+
+    #[test]
+    fn high_value_neighbours_lift_a_bare_incident_to_medium() {
+        let confirmed = ConfirmedCounts {
+            users: 1,
+            ..counts()
+        };
+        assert_eq!(level(&confirmed, 0), Severity::Low);
+        assert_eq!(level(&confirmed, 3), Severity::Medium);
     }
 }

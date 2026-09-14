@@ -1,0 +1,111 @@
+# LibraX local stack.
+#
+# `docker compose up --build` is the whole setup. Nothing here needs an account,
+# an API key, or an outbound connection: no Kafka, Neo4j, OpenSearch, hosted LLM
+# or live threat-intel feed is required. Postgres and Redis are provisioned
+# because the architecture reserves them for persistence and caching, but the
+# demo itself runs in memory, so the console works even if they are unavailable.
+
+name: librax
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-librax}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-librax}
+      POSTGRES_DB: ${POSTGRES_DB:-librax}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-librax} -d ${POSTGRES_DB:-librax}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      SERVICE: librax-api
+      LIBRAX_BIND_ADDR: 0.0.0.0:8080
+      # Same seed gives the same estate and the same intrusion every run.
+      LIBRAX_SEED: ${LIBRAX_SEED:-42}
+      LIBRAX_HOSPITALS: ${LIBRAX_HOSPITALS:-18}
+      LIBRAX_ENDPOINTS: ${LIBRAX_ENDPOINTS:-10482}
+      # Seeds the scripted intrusion at startup, so the console is populated
+      # the moment a judge opens it.
+      LIBRAX_DEMO_MODE: ${LIBRAX_DEMO_MODE:-true}
+      LIBRAX_DEMO_NOISE_EVENTS: ${LIBRAX_DEMO_NOISE_EVENTS:-20000}
+      LIBRAX_INCIDENT_START: ${LIBRAX_INCIDENT_START:-42}
+      DATABASE_URL: postgres://${POSTGRES_USER:-librax}:${POSTGRES_PASSWORD:-librax}@postgres:5432/${POSTGRES_DB:-librax}
+      REDIS_URL: redis://redis:6379
+      RUST_LOG: ${RUST_LOG:-info,librax=debug}
+    ports:
+      - "${API_PORT:-8080}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/api/v1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+    restart: unless-stopped
+
+  simulator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      SERVICE: librax-simulator
+      LIBRAX_API_URL: http://api:8080
+      LIBRAX_SEED: ${LIBRAX_SEED:-42}
+      LIBRAX_HOSPITALS: ${LIBRAX_HOSPITALS:-18}
+      LIBRAX_ENDPOINTS: ${LIBRAX_ENDPOINTS:-10482}
+      # Live background telemetry on top of what the API seeded.
+      LIBRAX_SIMULATOR_EPS: ${LIBRAX_SIMULATOR_EPS:-250}
+      # The API already seeds the intrusion; enable to add a second, later one.
+      LIBRAX_SIMULATOR_INJECT_ATTACK: ${LIBRAX_SIMULATOR_INJECT_ATTACK:-false}
+      RUST_LOG: ${RUST_LOG:-info}
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # Baked in at build time, so the browser talks to the host's API port
+        # rather than the compose-internal hostname.
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8080}
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
