@@ -1,0 +1,115 @@
+name: LibraX SOC Platform CI/CD
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # 1. Rust Backend Checks & Tests
+  # ---------------------------------------------------------------------------
+  rust-check-and-test:
+    name: Rust Backend (15 Crates)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.85.0
+          components: clippy
+
+      - name: Cache Cargo registry and build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Run Cargo Check across Workspace
+        run: cargo check --workspace --all-targets
+
+      - name: Run All Workspace Tests
+        run: cargo test --workspace --verbose
+
+  # ---------------------------------------------------------------------------
+  # 2. Frontend Build & Typecheck
+  # ---------------------------------------------------------------------------
+  frontend-build:
+    name: React 18 / TypeScript Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Frontend Dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build Frontend SPA
+        working-directory: frontend
+        run: npm run build
+
+  # ---------------------------------------------------------------------------
+  # 3. Documentation Build
+  # ---------------------------------------------------------------------------
+  docs-build:
+    name: MkDocs Architecture Documentation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install MkDocs & Plugins
+        run: |
+          pip install --upgrade pip
+          pip install mkdocs mkdocs-material markdown
+
+      - name: Build Documentation Site
+        run: python -m mkdocs build
+
+  # ---------------------------------------------------------------------------
+  # 4. Packaging & Artifact Release
+  # ---------------------------------------------------------------------------
+  package-submission:
+    name: Package Submission ZIP Archive
+    runs-on: ubuntu-latest
+    needs: [rust-check-and-test, frontend-build, docs-build]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Generate Submission ZIP Package
+        run: python scripts/package.py
+
+      - name: Upload Submission ZIP Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: librax-submission
+          path: librax-submission.zip
+          retention-days: 30
