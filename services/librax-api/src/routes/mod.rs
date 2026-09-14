@@ -5,9 +5,11 @@ use tower_http::trace::TraceLayer;
 
 use crate::state::SharedState;
 
+pub mod attacks;
 pub mod dashboard;
 pub mod events;
 pub mod incidents;
+pub mod intel;
 pub mod inventory;
 pub mod sources;
 
@@ -37,6 +39,15 @@ pub fn router(state: SharedState) -> Router {
         .route("/api/v1/dashboard", get(dashboard::dashboard))
         .route("/api/v1/events", post(events::ingest))
         .route("/api/v1/signals", get(events::signals))
+        .route("/api/v1/events/search", get(events::search))
+        .route("/api/v1/attacks", get(attacks::catalog))
+        .route("/api/v1/attacks/launch", post(attacks::launch))
+        .route("/api/v1/attacks/runs", get(attacks::runs))
+        .route("/api/v1/reset", post(attacks::reset))
+        .route("/api/v1/intel/indicators", get(intel::feed))
+        .route("/api/v1/intel/lookup", get(intel::lookup))
+        .route("/api/v1/intel/lookup/{value}", get(intel::lookup_path))
+        .route("/api/v1/files", get(intel::files))
         .route("/api/v1/incidents", get(incidents::list))
         .route("/api/v1/incidents/{id}", get(incidents::detail))
         .route("/api/v1/incidents/{id}/timeline", get(incidents::timeline))

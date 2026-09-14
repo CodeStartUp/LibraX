@@ -63,8 +63,11 @@ pub struct IncidentListResponse {
 /// The incident queue, most severe first.
 pub async fn list(State(state): State<SharedState>) -> Json<IncidentListResponse> {
     Json(state.read(|soc| {
-        let mut incidents: Vec<IncidentSummary> =
-            soc.incidents.iter().map(|b| summarise(&b.incident)).collect();
+        let mut incidents: Vec<IncidentSummary> = soc
+            .incidents
+            .iter()
+            .map(|b| summarise(&b.incident))
+            .collect();
 
         incidents.sort_by(|a, b| {
             b.overall_risk

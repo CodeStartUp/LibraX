@@ -1,7 +1,5 @@
 use librax_graph::AttackGraph;
-use librax_types::{
-    EntityKind, EntityRef, Incident, ResponseAction, ResponseActionKind, Severity,
-};
+use librax_types::{EntityKind, EntityRef, Incident, ResponseAction, ResponseActionKind, Severity};
 
 /// A named containment plan and the conditions under which it applies.
 pub trait Playbook: Send + Sync {
@@ -24,9 +22,7 @@ fn confirmed<'a>(
     graph
         .nodes
         .iter()
-        .filter(move |n| {
-            n.exposure == librax_types::Exposure::Confirmed && kinds.contains(&n.kind)
-        })
+        .filter(move |n| n.exposure == librax_types::Exposure::Confirmed && kinds.contains(&n.kind))
         .map(|n| n.entity())
 }
 

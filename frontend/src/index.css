@@ -874,3 +874,507 @@ table.data tr.clickable {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* ---------- interactive graph ---------- */
+
+.graph-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel-2);
+  flex-wrap: wrap;
+}
+
+.graph-btn-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.graph-btn-group button {
+  min-width: 28px;
+  height: 24px;
+  padding: 0 7px;
+  border: 1px solid var(--border);
+  background: var(--panel-3);
+  color: var(--text-dim);
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.graph-btn-group button:hover {
+  border-color: var(--cyan);
+  color: var(--cyan);
+}
+
+.graph-btn-group button:active {
+  background: #0d1014;
+}
+
+.zoom-readout {
+  min-width: 42px;
+  margin-left: 5px;
+  color: var(--text-faint);
+  font-family: var(--mono);
+  font-size: 10px;
+  text-align: right;
+}
+
+.graph-hint {
+  margin-left: auto;
+  font-size: 10px;
+}
+
+.graph-canvas {
+  background: #0d1014;
+  border-bottom: 1px solid var(--border);
+  /* Grabbing the background pans, so the whole surface reads as draggable. */
+  cursor: grab;
+  overflow: hidden;
+  touch-action: none;
+}
+
+.graph-canvas.dragging,
+.graph-canvas:active {
+  cursor: grabbing;
+}
+
+.graph-canvas svg {
+  display: block;
+}
+
+.graph-node text.node-label {
+  fill: var(--text);
+  font-family: var(--mono);
+  font-size: 11px;
+  pointer-events: none;
+}
+
+.graph-node text.node-meta {
+  fill: var(--text-faint);
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: 0.07em;
+  pointer-events: none;
+}
+
+.graph-node .glyph circle,
+.graph-node .glyph path {
+  fill: none;
+  stroke: var(--text-dim);
+  stroke-width: 1.15;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+/* Windows panes and the cloud read as solids rather than outlines. */
+.graph-node .glyph path[d^='M2 3.4'],
+.graph-node .glyph path[d^='M8.3 2.45'],
+.graph-node .glyph path[d^='M2 8.6'],
+.graph-node .glyph path[d^='M8.3 8.6'] {
+  fill: var(--text-dim);
+  stroke: none;
+}
+
+.graph-node.confirmed .glyph circle,
+.graph-node.confirmed .glyph path {
+  stroke: var(--confirmed);
+}
+
+.graph-node.confirmed .glyph path[fill] {
+  fill: var(--confirmed);
+}
+
+.graph-node.selected .glyph circle,
+.graph-node.selected .glyph path {
+  stroke: var(--cyan);
+}
+
+.graph-node.hovered rect {
+  stroke: var(--cyan);
+}
+
+/* Dimming rather than hiding: the analyst must still see what was set aside. */
+.graph-node.dim,
+.edge.dim {
+  opacity: 0.22;
+}
+
+.edge .graph-edge {
+  fill: none;
+  stroke: var(--border-bright);
+  stroke-width: 1.4;
+  pointer-events: none;
+}
+
+.edge .edge-hit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 14;
+  cursor: pointer;
+}
+
+.edge:hover .graph-edge,
+.edge.selected .graph-edge {
+  stroke: var(--cyan);
+  stroke-width: 2.2;
+}
+
+.edge .graph-edge-label {
+  fill: var(--text-faint);
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: 0.06em;
+  text-anchor: middle;
+  pointer-events: none;
+}
+
+.edge:hover .graph-edge-label,
+.edge.selected .graph-edge-label {
+  fill: var(--cyan);
+}
+
+.entity-icon {
+  vertical-align: -2px;
+  margin-right: 5px;
+}
+
+.entity-icon circle,
+.entity-icon path {
+  fill: none;
+  stroke: var(--text-faint);
+  stroke-width: 1.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* ---------- shared controls ---------- */
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.inline-controls {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.chip {
+  padding: 3px 9px;
+  border: 1px solid var(--border);
+  background: var(--panel-3);
+  color: var(--text-dim);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+
+.chip:hover {
+  border-color: var(--border-bright);
+  color: var(--text);
+}
+
+.chip.active {
+  border-color: var(--cyan);
+  color: var(--cyan);
+  background: #0f2222;
+}
+
+.chip.danger:hover {
+  border-color: var(--critical);
+  color: var(--critical);
+}
+
+button.primary {
+  padding: 5px 14px;
+  border: 1px solid var(--cyan);
+  background: #0f2222;
+  color: var(--cyan);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.09em;
+  cursor: pointer;
+}
+
+button.primary:hover:not(:disabled) {
+  background: #123030;
+}
+
+button.primary:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+button.link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--cyan);
+  font-family: var(--mono);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+button.link:hover {
+  text-decoration: underline;
+}
+
+button.link + button.link {
+  margin-left: 6px;
+}
+
+.search-bar,
+.filter-bar {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.search-bar input,
+.filter-bar input,
+.filter-bar select {
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  background: #0d1014;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+.search-bar input {
+  flex: 1;
+  min-width: 260px;
+}
+
+.filter-bar input.grow {
+  flex: 1;
+  min-width: 220px;
+}
+
+.search-bar input:focus,
+.filter-bar input:focus,
+.filter-bar select:focus {
+  outline: none;
+  border-color: var(--cyan);
+}
+
+.sample-row {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.notice {
+  padding: 7px 10px;
+  margin-bottom: 10px;
+  border-left: 2px solid var(--cyan);
+  background: #101a1a;
+  color: var(--text-dim);
+  font-size: 11.5px;
+}
+
+.narrow {
+  max-width: 78ch;
+}
+
+.tiny {
+  font-size: 10px;
+}
+
+.breakable {
+  overflow-wrap: anywhere;
+}
+
+.two-col {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) minmax(240px, 1.2fr);
+  gap: 18px;
+  margin: 10px 0;
+}
+
+.kv.compact dt,
+.kv.compact dd {
+  padding: 1px 0;
+  font-size: 10.5px;
+}
+
+/* ---------- attack range ---------- */
+
+.attack-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 10px;
+}
+
+.attack-card {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 11px;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+}
+
+.attack-card header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.attack-category {
+  color: var(--text-faint);
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.attack-card h4 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.attack-card p {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+.attack-card button.primary {
+  margin-top: auto;
+  align-self: flex-start;
+}
+
+.tactic-tags {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.progress {
+  height: 5px;
+  background: #0d1014;
+  border: 1px solid var(--border);
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--cyan);
+  transition: width 0.4s ease;
+}
+
+.progress-fill.running {
+  background: var(--medium);
+  animation: pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+tr.live td {
+  background: #16150f;
+}
+
+/* ---------- indicator verdicts ---------- */
+
+.verdict {
+  display: inline-block;
+  padding: 1px 7px;
+  border: 1px solid;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.09em;
+}
+
+.verdict.malicious {
+  border-color: var(--critical);
+  color: var(--critical);
+  background: #24151a;
+}
+
+.verdict.suspicious {
+  border-color: var(--medium);
+  color: var(--medium);
+  background: #241f14;
+}
+
+.verdict.clean {
+  border-color: #2f7d4f;
+  color: #56b97c;
+  background: #101a14;
+}
+
+.verdict.unknown {
+  border-color: var(--border-bright);
+  color: var(--text-faint);
+}
+
+.lookup-result {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.lookup-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.lookup-value {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.assessment {
+  margin: 10px 0 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-dim);
+  max-width: 92ch;
+}
+
+p.note {
+  margin: 6px 0 0;
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+/* ---------- tables ---------- */
+
+tr.clickable {
+  cursor: pointer;
+}
+
+tr.clickable:hover td {
+  background: var(--panel-3);
+}
+
+tr.flagged td:first-child {
+  box-shadow: inset 2px 0 0 var(--high);
+}
+
+tr.detail-row td {
+  padding: 10px 12px 14px;
+  background: #0d1014;
+}

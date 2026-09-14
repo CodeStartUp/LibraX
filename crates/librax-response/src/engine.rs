@@ -156,12 +156,12 @@ fn effect_of(action: &ResponseAction) -> String {
             "Active sessions and refresh tokens for {target} would be invalidated, forcing \
              re-authentication."
         ),
-        ResponseActionKind::BlockIp => format!(
-            "{target} would be added to the perimeter deny list on every campus firewall."
-        ),
-        ResponseActionKind::BlockDomain => format!(
-            "Resolution of {target} would be sinkholed at the internal DNS resolvers."
-        ),
+        ResponseActionKind::BlockIp => {
+            format!("{target} would be added to the perimeter deny list on every campus firewall.")
+        }
+        ResponseActionKind::BlockDomain => {
+            format!("Resolution of {target} would be sinkholed at the internal DNS resolvers.")
+        }
         ResponseActionKind::QuarantineFile => format!(
             "{target} would be moved to quarantine storage with its hash retained as evidence."
         ),
@@ -179,8 +179,8 @@ fn effect_of(action: &ResponseAction) -> String {
         ResponseActionKind::NotifyAnalyst => {
             format!("{target} would be paged with a link to this incident.")
         }
-        ResponseActionKind::Escalate => format!(
-            "{target} would be engaged out-of-hours under the ransomware escalation path."
-        ),
+        ResponseActionKind::Escalate => {
+            format!("{target} would be engaged out-of-hours under the ransomware escalation path.")
+        }
     }
 }

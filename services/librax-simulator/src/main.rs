@@ -113,20 +113,14 @@ async fn main() {
                     consecutive_failures,
                     "could not deliver batch, will retry"
                 );
-                tokio::time::sleep(StdDuration::from_secs(
-                    consecutive_failures.min(10) as u64
-                ))
-                .await;
+                tokio::time::sleep(StdDuration::from_secs(consecutive_failures.min(10) as u64))
+                    .await;
             }
         }
     }
 }
 
-async fn send(
-    client: &reqwest::Client,
-    endpoint: &str,
-    events: &[RawEvent],
-) -> Result<(), String> {
+async fn send(client: &reqwest::Client, endpoint: &str, events: &[RawEvent]) -> Result<(), String> {
     let response = client
         .post(endpoint)
         .json(&serde_json::json!({ "events": events }))

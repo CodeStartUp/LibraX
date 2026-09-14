@@ -322,18 +322,15 @@ impl Correlator {
             return Vec::new();
         }
 
-        let resolved: Vec<Vec<EntityRef>> = signals
-            .iter()
-            .map(|s| resolver.resolve_signal(s))
-            .collect();
+        let resolved: Vec<Vec<EntityRef>> =
+            signals.iter().map(|s| resolver.resolve_signal(s)).collect();
 
         let mut union = DisjointSet::new(signals.len());
         let mut links: Vec<Link> = Vec::new();
 
         for i in 0..signals.len() {
             for j in (i + 1)..signals.len() {
-                if let Some(link) =
-                    self.link(&signals[i], &resolved[i], &signals[j], &resolved[j])
+                if let Some(link) = self.link(&signals[i], &resolved[i], &signals[j], &resolved[j])
                 {
                     union.join(i, j);
                     links.push(link);
@@ -379,9 +376,7 @@ impl Correlator {
 
         let cluster_links: Vec<Link> = links
             .iter()
-            .filter(|l| {
-                ids.contains(l.from_signal.as_str()) && ids.contains(l.to_signal.as_str())
-            })
+            .filter(|l| ids.contains(l.from_signal.as_str()) && ids.contains(l.to_signal.as_str()))
             .cloned()
             .collect();
 

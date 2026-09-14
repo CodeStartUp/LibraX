@@ -93,75 +93,88 @@ impl Detector for DatabaseExfiltrationDetector {
     }
 
     fn title(&self) -> &'static str {
-        "Abnormal bulk access to a database"
+        "Abnormal bulk access to a clinical data store"
     }
 
     fn evaluate(&self, ctx: &DetectionContext<'_>) -> Vec<SecuritySignal> {
-        ctx.matching(|e| e.category == EventCategory::Database)
-            .filter_map(|event| {
-                let rows = attr_num(event, "rows_returned");
-                let baseline = attr_num(event, "baseline_rows_returned");
-                let multiple = ratio(rows, baseline);
+        // Imaging archives are data repositories too: a sweep of PACS is the same
+        // behaviour as a sweep of the patient database, and both map to T1213.
+        ctx.matching(|e| {
+            matches!(
+                e.category,
+                EventCategory::Database | EventCategory::MedicalImaging
+            )
+        })
+        .filter_map(|event| {
+            let rows = attr_num(event, "rows_returned");
+            let baseline = attr_num(event, "baseline_rows_returned");
+            let multiple = ratio(rows, baseline);
 
-                // Judged against the instance baseline, not an absolute number,
-                // so a busy reporting database does not alert every minute.
-                if multiple < 10.0 || rows < 1_000.0 {
-                    return None;
-                }
+            // Judged against the instance baseline, not an absolute number,
+            // so a busy reporting database does not alert every minute.
+            if multiple < 10.0 || rows < 1_000.0 {
+                return None;
+            }
 
-                let mut confidence = 0.30_f32;
-                let mut reasons = vec![format!(
-                    "{rows:.0} rows returned against a baseline of {baseline:.0} ({multiple:.0}x)"
-                )];
+            let unit = if event.category == EventCategory::MedicalImaging {
+                "imaging studies"
+            } else {
+                "rows"
+            };
 
-                if attr_bool(event, "contains_phi") {
-                    confidence += 0.25;
-                    reasons.push("result set contains protected health information".to_string());
-                }
+            let mut confidence = 0.30_f32;
+            let mut reasons = vec![format!(
+                "{rows:.0} {unit} returned against a baseline of {baseline:.0} ({multiple:.0}x)"
+            )];
 
-                if multiple >= 100.0 {
-                    confidence += 0.25;
-                    reasons.push("volume is two orders of magnitude above normal".to_string());
-                }
+            if attr_bool(event, "contains_phi") {
+                confidence += 0.25;
+                reasons.push("result set contains protected health information".to_string());
+            }
 
-                if event.enrichment.privileged_account || event.enrichment.service_account {
-                    confidence += 0.15;
-                    reasons.push("executed under a privileged service account".to_string());
-                }
+            if multiple >= 100.0 {
+                confidence += 0.25;
+                reasons.push("volume is two orders of magnitude above normal".to_string());
+            }
 
-                let severity = if attr_bool(event, "contains_phi") {
-                    Severity::Critical
-                } else {
-                    Severity::High
-                };
+            if event.enrichment.privileged_account || event.enrichment.service_account {
+                confidence += 0.15;
+                reasons.push("executed under a privileged service account".to_string());
+            }
 
-                let mitre = ctx
-                    .catalog
-                    .reference(
-                        "T1213",
-                        confidence,
-                        "bulk retrieval from a business data repository",
-                    )
-                    .into_iter()
-                    .collect();
+            let severity = if attr_bool(event, "contains_phi") {
+                Severity::Critical
+            } else {
+                Severity::High
+            };
 
-                Some(signal(
-                    DB_ID,
-                    "Abnormal bulk access to a database",
-                    event,
-                    severity,
+            let mitre = ctx
+                .catalog
+                .reference(
+                    "T1213",
                     confidence,
-                    entities_of(event),
-                    vec![event.event_id.clone()],
-                    mitre,
-                    format!(
-                        "{} on {}: {}.",
-                        event.user().unwrap_or("An unknown principal"),
-                        event.target_name().unwrap_or("an unknown instance"),
-                        reasons.join("; ")
-                    ),
-                ))
-            })
-            .collect()
+                    "bulk retrieval from a business data repository",
+                )
+                .into_iter()
+                .collect();
+
+            Some(signal(
+                DB_ID,
+                self.title(),
+                event,
+                severity,
+                confidence,
+                entities_of(event),
+                vec![event.event_id.clone()],
+                mitre,
+                format!(
+                    "{} on {}: {}.",
+                    event.user().unwrap_or("An unknown principal"),
+                    event.target_name().unwrap_or("an unknown instance"),
+                    reasons.join("; ")
+                ),
+            ))
+        })
+        .collect()
     }
 }

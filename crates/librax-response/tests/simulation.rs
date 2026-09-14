@@ -18,6 +18,8 @@ fn node(kind: EntityKind, name: &str, external: bool) -> GraphNode {
         exposure: Exposure::Confirmed,
         criticality: Some(90),
         hospital: Some("Campus-04".into()),
+        platform: Some(librax_graph::Platform::Windows),
+        platform_label: Some("Windows".into()),
         external,
         event_count: 1,
         first_seen: now,
@@ -101,7 +103,10 @@ fn recommendations_cover_containment_of_every_kind_of_target() {
         ResponseActionKind::Escalate,
         ResponseActionKind::CreateInvestigationTask,
     ] {
-        assert!(kinds.contains(&expected), "{expected:?} was not recommended");
+        assert!(
+            kinds.contains(&expected),
+            "{expected:?} was not recommended"
+        );
     }
 
     // Sorted by confidence, and every one justified.
@@ -257,9 +262,7 @@ fn destructive_recommendations_warn_about_their_own_side_effects() {
 
     let server_isolation = actions
         .iter()
-        .find(|a| {
-            a.kind == ResponseActionKind::IsolateEndpoint && a.target.name == "DB-SRV-02"
-        })
+        .find(|a| a.kind == ResponseActionKind::IsolateEndpoint && a.target.name == "DB-SRV-02")
         .expect("server isolation must be offered");
     assert!(
         server_isolation.rationale.contains("outage"),

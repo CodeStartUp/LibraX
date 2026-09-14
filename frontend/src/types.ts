@@ -152,6 +152,13 @@ export interface Incident {
   graph_edge_count: number;
 }
 
+export type Platform =
+  | 'windows'
+  | 'linux'
+  | 'network_appliance'
+  | 'medical_device'
+  | 'cloud';
+
 export interface GraphNode {
   id: string;
   kind: string;
@@ -160,6 +167,8 @@ export interface GraphNode {
   exposure: Exposure;
   criticality: number | null;
   hospital: string | null;
+  platform: Platform | null;
+  platform_label: string | null;
   external: boolean;
   event_count: number;
   first_seen: string;
@@ -284,4 +293,198 @@ export interface SourceHealthResponse {
   total: number;
   all_synthetic: boolean;
   sources: SourceHealth[];
+}
+
+// ---- attack playbooks and live runs ----
+
+export interface AttackKind {
+  id: string;
+  name: string;
+  category: string;
+  description: string;
+  expected_detections: string[];
+  expected_tactics: string[];
+  event_count: number;
+  duration_seconds: number;
+  severity_hint: Severity;
+}
+
+export interface AttackCatalog {
+  attacks: AttackKind[];
+  note: string;
+}
+
+export interface AttackRun {
+  run_id: string;
+  attack_id: string;
+  name: string;
+  category: string;
+  campus: string;
+  severity_hint: Severity;
+  status: 'running' | 'complete';
+  status_label: string;
+  launched_at: string;
+  completed_at: string | null;
+  events_total: number;
+  events_delivered: number;
+  speed: number;
+  signals_raised: string[];
+  incident_ids: string[];
+  event_ids: string[];
+  progress_percent: number;
+}
+
+export interface RunsResponse {
+  total: number;
+  running: number;
+  runs: AttackRun[];
+}
+
+export interface LaunchResponse {
+  run: AttackRun;
+  message: string;
+}
+
+// ---- indicator reputation ----
+
+export type IocVerdict = 'malicious' | 'suspicious' | 'clean' | 'unknown';
+
+export interface IocRecord {
+  kind: string;
+  kind_label: string;
+  value: string;
+  verdict: IocVerdict;
+  verdict_label: string;
+  confidence: number;
+  threat_name: string | null;
+  malware_family: string | null;
+  categories: string[];
+  detection_ratio: string | null;
+  first_reported: string | null;
+  last_reported: string | null;
+  feeds: string[];
+  notes: string[];
+  asn: string | null;
+  country: string | null;
+  hosting: string | null;
+  file_names: string[];
+  file_type: string | null;
+  signer: string | null;
+  signed: boolean | null;
+}
+
+export interface Sighting {
+  event_id: string;
+  timestamp: string;
+  source_id: string;
+  source_type: string;
+  host: string | null;
+  user: string | null;
+  activity: string;
+  matched_field: string;
+  message: string;
+}
+
+export interface LookupResponse {
+  query: string;
+  kind: string | null;
+  kind_label: string;
+  record: IocRecord;
+  observed_here: boolean;
+  sighting_count: number;
+  sightings: Sighting[];
+  incident_ids: string[];
+  assessment: string;
+}
+
+export interface FeedResponse {
+  feed: string;
+  total: number;
+  synthetic: boolean;
+  note: string;
+  indicators: IocRecord[];
+}
+
+// ---- observed files ----
+
+export interface FileView {
+  name: string;
+  sha256: string | null;
+  md5: string | null;
+  verdict: IocVerdict;
+  verdict_label: string;
+  threat_name: string | null;
+  malware_family: string | null;
+  detection_ratio: string | null;
+  signed: boolean | null;
+  signer: string | null;
+  host_count: number;
+  hosts: string[];
+  user_count: number;
+  users: string[];
+  execution_count: number;
+  first_seen: string;
+  last_seen: string;
+  command_lines: string[];
+  event_ids: string[];
+  notes: string[];
+}
+
+export interface FilesResponse {
+  total: number;
+  returned: number;
+  malicious: number;
+  unknown: number;
+  files: FileView[];
+}
+
+// ---- event search ----
+
+export interface EventRow {
+  event_id: string;
+  timestamp: string;
+  source_type: string;
+  source_id: string;
+  category: string;
+  activity: string;
+  severity: Severity;
+  user: string | null;
+  host: string | null;
+  src_ip: string | null;
+  dst_ip: string | null;
+  process: string | null;
+  command_line: string | null;
+  sha256: string | null;
+  md5: string | null;
+  hospital: string | null;
+  message: string;
+  signal_ids: string[];
+}
+
+export interface EventSearchResponse {
+  total_retained: number;
+  matched: number;
+  returned: number;
+  events: EventRow[];
+}
+
+export interface EventFilters {
+  q?: string;
+  source_type?: string;
+  source_id?: string;
+  min_severity?: string;
+  host?: string;
+  user?: string;
+  process?: string;
+  hospital?: string;
+  evidence_only?: boolean;
+  limit?: number;
+}
+
+export interface FileFilters {
+  name?: string;
+  verdict?: string;
+  host?: string;
+  bad_only?: boolean;
+  limit?: number;
 }

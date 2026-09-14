@@ -7,7 +7,9 @@ use serde_json::Value;
 use crate::entity::EntityRef;
 
 /// Shared severity ladder. Ordered so `Critical` is always the maximum.
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(
+    Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,
+)]
 #[serde(rename_all = "snake_case")]
 pub enum Severity {
     #[default]
@@ -202,6 +204,11 @@ pub struct ProcessContext {
     pub command_line: Option<String>,
     pub parent_name: Option<String>,
     pub hash_sha256: Option<String>,
+    pub hash_md5: Option<String>,
+    /// Code-signing state, which is what separates an abused system tool from a
+    /// dropped binary carrying the same name.
+    pub signed: Option<bool>,
+    pub signer: Option<String>,
 }
 
 /// Reputation verdict attached during enrichment.

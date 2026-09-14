@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 
 use chrono::{DateTime, Utc};
+use librax_enrichment::Platform;
 use librax_types::{EntityKind, EntityRef, Exposure, RelationType};
 use serde::Serialize;
 
@@ -14,6 +15,11 @@ pub struct GraphNode {
     /// 0-100 business criticality, when the asset is known to us.
     pub criticality: Option<u8>,
     pub hospital: Option<String>,
+    /// What the asset runs, when the inventory knows it. Drives the icon the
+    /// console draws, and tells the analyst whether an agent action is even
+    /// possible on it.
+    pub platform: Option<Platform>,
+    pub platform_label: Option<String>,
     /// Infrastructure that resolves to nothing we own.
     pub external: bool,
     pub event_count: u64,

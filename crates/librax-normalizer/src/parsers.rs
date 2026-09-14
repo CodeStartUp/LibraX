@@ -11,7 +11,12 @@ use serde_json::Value;
 /// The whole payload is carried into `attributes` so detectors can reason about
 /// source-specific behaviour (failure bursts, row baselines, beacon intervals)
 /// without the parser having to anticipate every question.
-fn base(raw: &RawEvent, category: EventCategory, activity: &str, severity: Severity) -> CanonicalEvent {
+fn base(
+    raw: &RawEvent,
+    category: EventCategory,
+    activity: &str,
+    severity: Severity,
+) -> CanonicalEvent {
     let attributes: HashMap<String, Value> = raw
         .payload
         .as_object()
@@ -48,13 +53,20 @@ fn i64_field(raw: &RawEvent, key: &str) -> Option<i64> {
 }
 
 fn bool_field(raw: &RawEvent, key: &str) -> bool {
-    raw.payload
-        .get(key)
-        .and_then(|v| v.as_bool())
-        .unwrap_or(false)
+    opt_bool_field(raw, key).unwrap_or(false)
 }
 
-fn endpoint(ip: Option<String>, port: Option<u16>, domain: Option<String>) -> Option<NetworkEndpoint> {
+/// Distinguishes "the source said false" from "the source did not say", which
+/// matters for signing state: unsigned and unreported are not the same claim.
+fn opt_bool_field(raw: &RawEvent, key: &str) -> Option<bool> {
+    raw.payload.get(key)?.as_bool()
+}
+
+fn endpoint(
+    ip: Option<String>,
+    port: Option<u16>,
+    domain: Option<String>,
+) -> Option<NetworkEndpoint> {
     if ip.is_none() && domain.is_none() {
         return None;
     }
@@ -131,7 +143,11 @@ fn endpoint_agent(raw: &RawEvent) -> CanonicalEvent {
             pid: i64_field(raw, "pid").and_then(|p| u32::try_from(p).ok()),
             command_line: str_field(raw, "process_cmdline"),
             parent_name: str_field(raw, "parent_process"),
-            hash_sha256: str_field(raw, "sha256"),
+            // Vendors disagree on the field name; accept either.
+            hash_sha256: str_field(raw, "process_sha256").or_else(|| str_field(raw, "sha256")),
+            hash_md5: str_field(raw, "process_md5").or_else(|| str_field(raw, "md5")),
+            signed: opt_bool_field(raw, "signed"),
+            signer: str_field(raw, "signer"),
         });
     }
 
@@ -251,7 +267,12 @@ fn dns(raw: &RawEvent) -> CanonicalEvent {
 
 fn server(raw: &RawEvent) -> CanonicalEvent {
     let activity = str_field(raw, "event").unwrap_or_else(|| "server_event".into());
-    let mut event = base(raw, EventCategory::Authentication, &activity, Severity::Info);
+    let mut event = base(
+        raw,
+        EventCategory::Authentication,
+        &activity,
+        Severity::Info,
+    );
     event.principal = str_field(raw, "user").map(EntityRef::user);
     event.host = str_field(raw, "host").map(EntityRef::server);
     event.source = endpoint(str_field(raw, "src_ip"), None, None);
@@ -266,7 +287,12 @@ fn server(raw: &RawEvent) -> CanonicalEvent {
 }
 
 fn database(raw: &RawEvent) -> CanonicalEvent {
-    let mut event = base(raw, EventCategory::Database, "database_query", Severity::Info);
+    let mut event = base(
+        raw,
+        EventCategory::Database,
+        "database_query",
+        Severity::Info,
+    );
     event.principal = str_field(raw, "principal").map(|p| EntityRef::new(EntityKind::Account, p));
     event.host = str_field(raw, "host").map(EntityRef::server);
     event.target = str_field(raw, "instance").map(EntityRef::database);
@@ -280,19 +306,41 @@ fn database(raw: &RawEvent) -> CanonicalEvent {
 }
 
 fn pacs(raw: &RawEvent) -> CanonicalEvent {
-    let mut event = base(
-        raw,
-        EventCategory::MedicalImaging,
-        "pacs_study_accessed",
-        Severity::Info,
-    );
-    event.principal = str_field(raw, "user").map(EntityRef::user);
-    event.host = str_field(raw, "device").map(|d| EntityRef::new(EntityKind::Device, d));
-    event.message = format!(
-        "{} accessed imaging on {}",
-        event.user().unwrap_or("unknown user"),
-        event.host_name().unwrap_or("unknown device")
-    );
+    // Retrieval volume is what separates a radiologist opening a study from a
+    // sweep of the archive, so an event carrying a study count is classified as a
+    // retrieval and keeps the count where the bulk-access detector can see it.
+    let studies = i64_field(raw, "rows_returned").or_else(|| i64_field(raw, "studies_returned"));
+    let activity = if studies.is_some() {
+        "pacs_study_retrieved"
+    } else {
+        "pacs_study_accessed"
+    };
+
+    let mut event = base(raw, EventCategory::MedicalImaging, activity, Severity::Info);
+
+    // Vendors label the operator either way, and the archive is sometimes named
+    // separately from the device serving it.
+    event.principal = str_field(raw, "user")
+        .or_else(|| str_field(raw, "principal"))
+        .map(|p| EntityRef::user(p));
+    event.host = str_field(raw, "device")
+        .or_else(|| str_field(raw, "host"))
+        .map(|d| EntityRef::new(EntityKind::Device, d));
+    event.target = str_field(raw, "instance").map(|i| EntityRef::new(EntityKind::Device, i));
+
+    event.message = match studies {
+        Some(count) => format!(
+            "{} retrieved {} imaging studies from {}",
+            event.user().unwrap_or("unknown user"),
+            count,
+            event.host_name().unwrap_or("unknown device")
+        ),
+        None => format!(
+            "{} accessed imaging on {}",
+            event.user().unwrap_or("unknown user"),
+            event.host_name().unwrap_or("unknown device")
+        ),
+    };
     event
 }
 
@@ -317,8 +365,7 @@ fn cloud(raw: &RawEvent) -> CanonicalEvent {
     let activity = str_field(raw, "operation").unwrap_or_else(|| "cloud_operation".into());
     let mut event = base(raw, EventCategory::Configuration, &activity, Severity::Info);
     event.principal = str_field(raw, "principal").map(EntityRef::user);
-    event.target = str_field(raw, "resource")
-        .map(|r| EntityRef::new(EntityKind::CloudResource, r));
+    event.target = str_field(raw, "resource").map(|r| EntityRef::new(EntityKind::CloudResource, r));
     event.message = format!("Cloud operation {activity}");
     event
 }
@@ -332,8 +379,14 @@ fn proxy(raw: &RawEvent) -> CanonicalEvent {
 }
 
 fn unsupported(raw: &RawEvent) -> CanonicalEvent {
-    let mut event = base(raw, EventCategory::Unknown, "unsupported_event", Severity::Info);
-    event.attributes
+    let mut event = base(
+        raw,
+        EventCategory::Unknown,
+        "unsupported_event",
+        Severity::Info,
+    );
+    event
+        .attributes
         .insert("librax_unsupported".to_string(), Value::Bool(true));
     event.message = format!("Unsupported source `{}`", raw.source_id);
     event

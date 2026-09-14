@@ -74,7 +74,10 @@ pub fn analyse(refs: &[MitreTechniqueRef]) -> Progression {
 
     // Techniques outside the ribbon (Defense Evasion, Persistence) still count
     // towards how far the intrusion reached.
-    let furthest = refs.iter().map(|r| r.tactic).max_by_key(|t| t.stage_order());
+    let furthest = refs
+        .iter()
+        .map(|r| r.tactic)
+        .max_by_key(|t| t.stage_order());
 
     let breadth = observed_stages as f32 / chain.len() as f32;
     let depth = furthest
@@ -114,7 +117,13 @@ mod tests {
     fn one_stage_scores_far_below_a_full_chain() {
         let single = analyse(&refs(&["T1059.001"]));
         let full = analyse(&refs(&[
-            "T1566.001", "T1059.001", "T1071.001", "T1110.003", "T1046", "T1021.006", "T1213",
+            "T1566.001",
+            "T1059.001",
+            "T1071.001",
+            "T1110.003",
+            "T1046",
+            "T1021.006",
+            "T1213",
             "T1486",
         ]));
 
@@ -131,7 +140,13 @@ mod tests {
     #[test]
     fn full_demo_chain_reaches_every_stage() {
         let progression = analyse(&refs(&[
-            "T1566.001", "T1059.001", "T1071.001", "T1110.003", "T1046", "T1021.006", "T1213",
+            "T1566.001",
+            "T1059.001",
+            "T1071.001",
+            "T1110.003",
+            "T1046",
+            "T1021.006",
+            "T1213",
             "T1490",
         ]));
 

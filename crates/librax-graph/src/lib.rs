@@ -11,3 +11,6 @@ pub mod graph;
 
 pub use builder::build;
 pub use graph::{AttackGraph, GraphEdge, GraphNode, Reach};
+// Re-exported so consumers of a graph node can read its platform without taking a
+// direct dependency on the inventory crate.
+pub use librax_enrichment::Platform;

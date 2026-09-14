@@ -171,11 +171,12 @@ pub async fn hospitals(State(state): State<SharedState>) -> Json<HospitalsRespon
             .hospitals
             .iter()
             .map(|hospital| {
+                // Assets record the hospital by name, not by id.
                 let at_site = || {
                     inventory
                         .assets
                         .iter()
-                        .filter(|a| a.hospital == hospital.id)
+                        .filter(|a| a.hospital == hospital.name)
                 };
 
                 HospitalView {

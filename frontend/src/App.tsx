@@ -2,12 +2,24 @@ import { useEffect, useState } from 'react';
 
 import { api } from './api';
 import { useAsync } from './hooks';
+import { AttackLauncher } from './components/AttackLauncher';
+import { EventSearch } from './components/EventSearch';
 import { IncidentDetail } from './components/IncidentDetail';
+import { IntelView } from './components/Intel';
 import { IncidentTable, Overview } from './components/Overview';
 import { Sources } from './components/Sources';
 import { Empty, ErrorBanner, Loading, Panel } from './components/common';
 
-type View = 'overview' | 'incidents' | 'sources';
+type View = 'overview' | 'incidents' | 'attacks' | 'intel' | 'telemetry' | 'sources';
+
+const VIEWS: { id: View; label: string }[] = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'incidents', label: 'Incidents' },
+  { id: 'attacks', label: 'Attack range' },
+  { id: 'intel', label: 'Files & indicators' },
+  { id: 'telemetry', label: 'Telemetry' },
+  { id: 'sources', label: 'Sources' },
+];
 
 interface Route {
   view: View;
@@ -22,10 +34,9 @@ function parseHash(hash: string): Route {
   if (parts[0] === 'incidents') {
     return { view: 'incidents', incidentId: parts[1] ?? null };
   }
-  if (parts[0] === 'sources') {
-    return { view: 'sources', incidentId: null };
-  }
-  return { view: 'overview', incidentId: null };
+
+  const match = VIEWS.find((v) => v.id === parts[0]);
+  return { view: match?.id ?? 'overview', incidentId: null };
 }
 
 function toHash(route: Route): string {
@@ -63,24 +74,15 @@ export function App() {
         </div>
 
         <nav className="nav">
-          <button
-            data-active={view === 'overview'}
-            onClick={() => go({ view: 'overview', incidentId: null })}
-          >
-            Overview
-          </button>
-          <button
-            data-active={view === 'incidents'}
-            onClick={() => go({ view: 'incidents', incidentId: null })}
-          >
-            Incidents
-          </button>
-          <button
-            data-active={view === 'sources'}
-            onClick={() => go({ view: 'sources', incidentId: null })}
-          >
-            Sources
-          </button>
+          {VIEWS.map((item) => (
+            <button
+              key={item.id}
+              data-active={view === item.id}
+              onClick={() => go({ view: item.id, incidentId: null })}
+            >
+              {item.label}
+            </button>
+          ))}
         </nav>
 
         <div className="topbar-right">
@@ -111,6 +113,9 @@ export function App() {
           )
         ) : null}
 
+        {view === 'attacks' ? <AttackLauncher onOpenIncident={open} /> : null}
+        {view === 'intel' ? <IntelView onOpenIncident={open} /> : null}
+        {view === 'telemetry' ? <EventSearch /> : null}
         {view === 'sources' ? <Sources /> : null}
       </main>
     </div>
@@ -138,7 +143,7 @@ function IncidentQueue({ onOpen }: { onOpen: (id: string) => void }) {
       }
     >
       {incidents.data.incidents.length === 0 ? (
-        <Empty what="No incidents have been raised" />
+        <Empty what="No incidents have been raised. Launch an attack from the attack range and watch correlation build one." />
       ) : (
         <IncidentTable incidents={incidents.data.incidents} onOpen={onOpen} />
       )}

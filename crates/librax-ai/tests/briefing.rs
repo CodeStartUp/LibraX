@@ -20,6 +20,8 @@ fn node(kind: EntityKind, name: &str) -> GraphNode {
         exposure: Exposure::Confirmed,
         criticality: Some(98),
         hospital: Some("Campus-04".into()),
+        platform: Some(librax_graph::Platform::Windows),
+        platform_label: Some("Windows".into()),
         external: false,
         event_count: 1,
         first_seen: now,
@@ -34,7 +36,9 @@ fn incident() -> Incident {
         incident_id: "INC-0042".into(),
         title: "Multi-Stage Healthcare Intrusion".into(),
         status: IncidentStatus::New,
-        signals: (1..=11).map(|n| format!("SIG-detector-EVT-{n:02}")).collect(),
+        signals: (1..=11)
+            .map(|n| format!("SIG-detector-EVT-{n:02}"))
+            .collect(),
         evidence: (1..=11)
             .map(|n| Evidence {
                 event_id: format!("EVT-{n:02}"),
@@ -107,7 +111,13 @@ fn brief() -> Briefing {
 
     let catalog = MitreCatalog::embedded();
     let techniques: Vec<_> = [
-        "T1566.001", "T1059.001", "T1071.001", "T1110.003", "T1046", "T1021.006", "T1213",
+        "T1566.001",
+        "T1059.001",
+        "T1071.001",
+        "T1110.003",
+        "T1046",
+        "T1021.006",
+        "T1213",
         "T1490",
     ]
     .iter()
@@ -143,7 +153,10 @@ fn every_section_is_populated() {
 
     assert!(!briefing.summary.is_empty(), "what happened");
     assert!(!briefing.risk_explanation.is_empty(), "why this score");
-    assert!(!briefing.evidence_explanation.is_empty(), "what supports it");
+    assert!(
+        !briefing.evidence_explanation.is_empty(),
+        "what supports it"
+    );
     assert!(!briefing.unknowns.is_empty(), "what is not confirmed");
     assert!(!briefing.investigation_guidance.is_empty(), "what next");
     assert!(!briefing.response_suggestion.is_empty(), "which playbook");
@@ -215,7 +228,10 @@ fn the_risk_explanation_shows_the_arithmetic_and_the_drivers() {
         .join(" ");
 
     assert!(text.contains("95/100"), "{text}");
-    assert!(text.contains("40%") && text.contains("35%") && text.contains("25%"), "{text}");
+    assert!(
+        text.contains("40%") && text.contains("35%") && text.contains("25%"),
+        "{text}"
+    );
     assert!(text.contains("PATIENT-DB"), "{text}");
     assert!(
         text.contains("scored separately"),

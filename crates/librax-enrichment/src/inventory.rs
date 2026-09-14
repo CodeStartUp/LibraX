@@ -69,10 +69,68 @@ pub struct Hospital {
     pub region: String,
 }
 
+/// What an asset runs, which decides how the console draws it and what a
+/// containment action would actually mean for it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Platform {
+    Windows,
+    Linux,
+    /// Firewalls and switches: no agent, so no isolation action.
+    NetworkAppliance,
+    /// Imaging and clinical devices. Regulated, frequently unpatchable, and never
+    /// something to isolate without clinical sign-off.
+    MedicalDevice,
+    Cloud,
+}
+
+impl Platform {
+    pub fn label(self) -> &'static str {
+        match self {
+            Platform::Windows => "Windows",
+            Platform::Linux => "Linux",
+            Platform::NetworkAppliance => "Network appliance",
+            Platform::MedicalDevice => "Medical device",
+            Platform::Cloud => "Cloud workload",
+        }
+    }
+
+    /// Whether an endpoint agent can plausibly isolate it.
+    pub fn agent_capable(self) -> bool {
+        matches!(self, Platform::Windows | Platform::Linux)
+    }
+}
+
+impl AssetRole {
+    /// The platform a role runs on.
+    ///
+    /// `index` breaks the tie for roles that are genuinely mixed in a hospital
+    /// estate, so the fleet is not implausibly uniform.
+    pub fn platform(self, index: usize) -> Platform {
+        match self {
+            AssetRole::Workstation => Platform::Windows,
+            AssetRole::DomainController => Platform::Windows,
+            AssetRole::Firewall => Platform::NetworkAppliance,
+            AssetRole::Pacs => Platform::MedicalDevice,
+            AssetRole::CloudWorkload => Platform::Cloud,
+            AssetRole::Database => Platform::Linux,
+            // Application servers are the genuinely mixed case.
+            AssetRole::Server => {
+                if index % 3 == 0 {
+                    Platform::Linux
+                } else {
+                    Platform::Windows
+                }
+            }
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Asset {
     pub entity: EntityRef,
     pub role: AssetRole,
+    pub platform: Platform,
     pub hospital: String,
     pub ip: String,
     /// 0-100 business criticality.
@@ -137,9 +195,7 @@ const DEPARTMENTS: &[&str] = &[
     "Administration",
 ];
 
-const REGIONS: &[&str] = &[
-    "North", "South", "East", "West", "Central", "Coastal",
-];
+const REGIONS: &[&str] = &["North", "South", "East", "West", "Central", "Coastal"];
 
 const FIRST_NAMES: &[&str] = &[
     "alice", "brian", "chen", "divya", "elena", "farid", "grace", "hugo", "imani", "jonas",
@@ -149,6 +205,19 @@ const FIRST_NAMES: &[&str] = &[
 const LAST_NAMES: &[&str] = &[
     "adams", "bose", "clark", "dutta", "evans", "ferro", "gupta", "hall", "iyer", "jain",
 ];
+
+/// Short site code used in machine names: `campus-04` becomes `C04`.
+fn campus_code(hospital_id: &str) -> String {
+    let digits: String = hospital_id.chars().filter(|c| c.is_ascii_digit()).collect();
+    format!(
+        "C{}",
+        if digits.is_empty() {
+            "00".into()
+        } else {
+            digits
+        }
+    )
+}
 
 impl Inventory {
     pub fn generate(spec: InventorySpec) -> Self {
@@ -174,6 +243,7 @@ impl Inventory {
             assets.push(Asset {
                 entity: EntityRef::new(EntityKind::Host, &name),
                 role: AssetRole::Workstation,
+                platform: AssetRole::Workstation.platform(i),
                 hospital: hospital.name.clone(),
                 ip: format!("10.{}.{}.{}", 10 + i % 18, (i / 250) % 256, i % 250 + 2),
                 criticality: rng.range_u8(20, 45),
@@ -184,29 +254,42 @@ impl Inventory {
         }
 
         // Per-campus infrastructure.
+        //
+        // Names carry the campus code. A shared numbering scheme would eventually
+        // collide with the documented demo servers, and a collision is worse than
+        // ugly here: two hospitals appearing to share a database server makes
+        // unrelated activity at both correlate on an entity they never shared.
         for (idx, hospital) in hospitals.iter().enumerate() {
-            let n = idx + 1;
+            let code = campus_code(&hospital.id);
             let infra = [
                 (
-                    format!("DC-SRV-{n:02}"),
+                    format!("{code}-DC-SRV-01"),
                     AssetRole::DomainController,
                     92u8,
                     70u8,
                 ),
-                (format!("APP-SRV-{n:02}"), AssetRole::Server, 74, 55),
-                (format!("FILE-SRV-{n:02}"), AssetRole::Server, 68, 72),
-                (format!("DB-SRV-{n:02}"), AssetRole::Database, 96, 97),
-                (format!("PACS-{n:02}"), AssetRole::Pacs, 95, 98),
-                (format!("FW-EDGE-{n:02}"), AssetRole::Firewall, 80, 20),
-                (format!("CLOUD-WL-{n:02}"), AssetRole::CloudWorkload, 70, 60),
+                (format!("{code}-APP-SRV-01"), AssetRole::Server, 74, 55),
+                (format!("{code}-FILE-SRV-01"), AssetRole::Server, 68, 72),
+                (format!("{code}-DB-SRV-01"), AssetRole::Database, 96, 97),
+                (format!("{code}-PACS-01"), AssetRole::Pacs, 95, 98),
+                (format!("{code}-FW-EDGE-01"), AssetRole::Firewall, 80, 20),
+                (
+                    format!("{code}-CLOUD-WL-01"),
+                    AssetRole::CloudWorkload,
+                    70,
+                    60,
+                ),
             ];
 
-            for (name, role, criticality, sensitivity) in infra {
+            for (slot, (name, role, criticality, sensitivity)) in infra.into_iter().enumerate() {
                 assets.push(Asset {
                     entity: EntityRef::new(role.entity_kind(), &name),
                     role,
+                    platform: role.platform(idx),
                     hospital: hospital.name.clone(),
-                    ip: format!("10.{}.{}.{}", 20 + idx, 1 + idx % 8, 2 + idx),
+                    // One address per machine: sharing an address across a campus
+                    // would make entity resolution fold the whole rack into one host.
+                    ip: format!("10.{}.{}.{}", 20 + idx, 1 + idx % 8, 2 + slot),
                     criticality,
                     data_sensitivity: sensitivity,
                     edr_covered: role != AssetRole::Pacs && role != AssetRole::Firewall,
@@ -227,6 +310,26 @@ impl Inventory {
                 hospital: hospital.name.clone(),
                 privileged: department == "IT" && i % 7 == 0,
                 service_account: false,
+            });
+        }
+
+        // Every campus administers its own databases. Without a local account per
+        // site, campuses whose generated staff happen to include no privileged user
+        // fall back to the one demo account, and unrelated activity at different
+        // hospitals then correlates on an identity they do not actually share.
+        for hospital in &hospitals {
+            if hospital.name == demo::HOSPITAL {
+                // install_demo_entities pins the documented account here.
+                continue;
+            }
+
+            let name = format!("svc.dbadmin.{}", hospital.name.to_lowercase());
+            identities.push(Identity {
+                entity: EntityRef::new(EntityKind::Account, &name),
+                department: "IT".to_string(),
+                hospital: hospital.name.clone(),
+                privileged: true,
+                service_account: true,
             });
         }
 
@@ -290,10 +393,13 @@ impl Inventory {
                 .any(|(name, ..)| a.entity.name.eq_ignore_ascii_case(name))
         });
 
-        for (name, role, ip, criticality, sensitivity, covered) in fixed_assets {
+        for (index, (name, role, ip, criticality, sensitivity, covered)) in
+            fixed_assets.into_iter().enumerate()
+        {
             self.assets.push(Asset {
                 entity: EntityRef::new(role.entity_kind(), name),
                 role,
+                platform: role.platform(index),
                 hospital: demo::HOSPITAL.to_string(),
                 ip: ip.to_string(),
                 criticality,
@@ -422,6 +528,39 @@ mod tests {
 
         let account = inv.identity_by_name(demo::PRIVILEGED_ACCOUNT).unwrap();
         assert!(account.privileged);
+    }
+
+    /// A shared administrator name is a correlation trap: two unrelated attacks at
+    /// two hospitals would link on an identity, and the analyst would be handed one
+    /// incident spanning campuses that have nothing to do with each other.
+    #[test]
+    fn every_campus_has_its_own_privileged_account() {
+        let inv = Inventory::generate(InventorySpec::default());
+
+        for hospital in &inv.hospitals {
+            let local: Vec<&Identity> = inv
+                .identities
+                .iter()
+                .filter(|i| i.hospital == hospital.name && i.privileged)
+                .collect();
+
+            assert!(
+                !local.is_empty(),
+                "{} has no privileged account, so attacks there borrow another site's",
+                hospital.name
+            );
+
+            for account in local {
+                let elsewhere = inv.identities.iter().any(|other| {
+                    other.entity.name == account.entity.name && other.hospital != account.hospital
+                });
+                assert!(
+                    !elsewhere,
+                    "{} is privileged at more than one campus",
+                    account.entity.name
+                );
+            }
+        }
     }
 
     #[test]

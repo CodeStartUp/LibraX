@@ -7,7 +7,7 @@
 //! knows how to read them.
 
 use chrono::{DateTime, Duration, Utc};
-use librax_enrichment::demo;
+use librax_enrichment::{demo, hashes};
 use librax_types::{RawEvent, SourceType};
 use serde_json::json;
 
@@ -54,6 +54,8 @@ pub fn attack_chain(start: DateTime<Utc>) -> Vec<RawEvent> {
                 "subject": "Q3 Benefits Enrolment - Action Required Today",
                 "attachment_name": "Benefits_Enrolment.docm",
                 "attachment_macro": true,
+                "attachment_sha256": hashes::LURE_SHA256,
+                "attachment_md5": hashes::LURE_MD5,
                 "embedded_url": format!("https://{}/enrol", demo::PHISHING_DOMAIN),
                 "spf": "fail",
                 "dkim": "fail",
@@ -94,8 +96,12 @@ pub fn attack_chain(start: DateTime<Utc>) -> Vec<RawEvent> {
                 "process_name": "powershell.exe",
                 "parent_process": "WINWORD.EXE",
                 "process_cmdline": "powershell.exe -nop -w hidden -ep bypass -enc SQBFAFgAIAAoAE4AZQB3AC0ATwBiAGoAZQBjAHQAIABOAGUAdAAuAFcAZQBiAEMAbABpAGUAbgB0ACkA",
-                "sha256": "9f2c1b7ad4e58c0a3b6d9e11f47c2a8de5b0f39c7a1d4e62b8f05c93a7e1d208",
+                // The interpreter is the legitimate signed binary; what makes this
+                // an indicator is the command line, not the file.
+                "process_sha256": hashes::POWERSHELL_SHA256,
+                "process_md5": hashes::POWERSHELL_MD5,
                 "signed": true,
+                "signer": "Microsoft Windows",
                 "pid": 7412
             }),
         ),
@@ -222,6 +228,8 @@ pub fn attack_chain(start: DateTime<Utc>) -> Vec<RawEvent> {
                 "file_path": "C:\\Windows\\Temp\\archive_patient_export.zip",
                 "file_size_bytes": 2_147_483_648i64,
                 "process_name": "7z.exe",
+                "process_sha256": hashes::SEVENZIP_SHA256,
+                "process_md5": hashes::SEVENZIP_MD5,
                 "is_archive": true,
                 "in_temp_directory": true,
                 "source_records": 184230
@@ -240,6 +248,8 @@ pub fn attack_chain(start: DateTime<Utc>) -> Vec<RawEvent> {
                 "process_name": "vssadmin.exe",
                 "parent_process": "powershell.exe",
                 "process_cmdline": "vssadmin.exe delete shadows /all /quiet",
+                "process_sha256": hashes::VSSADMIN_SHA256,
+                "process_md5": hashes::VSSADMIN_MD5,
                 "shadow_copy_deletion": true,
                 "files_modified_per_minute": 1840,
                 "new_extensions_observed": ["*.locked"],
@@ -261,8 +271,8 @@ pub fn ddos_burst(at: DateTime<Utc>) -> RawEvent {
         at,
         json!({
             "event": "flow_summary",
-            "dst": "10.31.1.11",
-            "dst_hostname": "FW-EDGE-11",
+            "dst": "10.30.3.7",
+            "dst_hostname": "C11-FW-EDGE-01",
             "window_seconds": 60,
             "connections_per_minute": 1_800_000i64,
             "baseline_connections_per_minute": 12_000i64,

@@ -32,7 +32,10 @@ pub struct SecuritySignal {
 impl SecuritySignal {
     /// The furthest-along tactic this signal implies, if any.
     pub fn primary_tactic(&self) -> Option<crate::mitre::Tactic> {
-        self.mitre.iter().map(|m| m.tactic).max_by_key(|t| t.stage_order())
+        self.mitre
+            .iter()
+            .map(|m| m.tactic)
+            .max_by_key(|t| t.stage_order())
     }
 
     pub fn entity_ids(&self) -> Vec<&str> {

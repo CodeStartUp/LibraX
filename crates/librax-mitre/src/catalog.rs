@@ -190,8 +190,17 @@ mod tests {
     fn demo_techniques_are_all_present() {
         let catalog = MitreCatalog::embedded();
         for id in [
-            "T1566.001", "T1059.001", "T1071.001", "T1046", "T1110.003", "T1021.006", "T1213",
-            "T1074.001", "T1490", "T1486", "T1498",
+            "T1566.001",
+            "T1059.001",
+            "T1071.001",
+            "T1046",
+            "T1110.003",
+            "T1021.006",
+            "T1213",
+            "T1074.001",
+            "T1490",
+            "T1486",
+            "T1498",
         ] {
             assert!(catalog.lookup(id).is_some(), "{id} missing from catalog");
         }
@@ -223,7 +232,9 @@ mod tests {
     fn validate_separates_known_from_unmapped() {
         let catalog = MitreCatalog::embedded();
         let refs = vec![
-            catalog.reference("T1059.001", 0.9, "encoded command").unwrap(),
+            catalog
+                .reference("T1059.001", 0.9, "encoded command")
+                .unwrap(),
             MitreTechniqueRef {
                 technique_id: "T0000".into(),
                 name: "Invented".into(),
@@ -241,7 +252,9 @@ mod tests {
     #[test]
     fn confidence_is_clamped() {
         let catalog = MitreCatalog::embedded();
-        let reference = catalog.reference("T1486", 4.2, "over-eager detector").unwrap();
+        let reference = catalog
+            .reference("T1486", 4.2, "over-eager detector")
+            .unwrap();
         assert_eq!(reference.confidence, 1.0);
     }
 }

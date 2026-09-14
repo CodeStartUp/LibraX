@@ -70,10 +70,7 @@ impl Enricher {
         enrichment.source_reputation = reputation(event.src_ip(), None);
         enrichment.destination_reputation = reputation(
             event.dst_ip(),
-            event
-                .destination
-                .as_ref()
-                .and_then(|d| d.domain.as_deref()),
+            event.destination.as_ref().and_then(|d| d.domain.as_deref()),
         );
 
         // Preserve a maintenance flag the source may have declared.
@@ -148,7 +145,10 @@ mod tests {
         let mut e = event();
         enricher().enrich(&mut e);
 
-        assert_eq!(e.enrichment.department.as_deref(), Some(demo::USER_DEPARTMENT));
+        assert_eq!(
+            e.enrichment.department.as_deref(),
+            Some(demo::USER_DEPARTMENT)
+        );
         assert_eq!(e.enrichment.hospital.as_deref(), Some(demo::HOSPITAL));
         assert!(e.enrichment.asset_criticality.is_some());
     }

@@ -149,7 +149,9 @@ pub fn assess_blast_radius(
     };
     let high_value_reachable = assets
         .iter()
-        .filter(|a| a.exposure != Exposure::Confirmed && a.criticality >= POTENTIAL_CRITICALITY_FLOOR)
+        .filter(|a| {
+            a.exposure != Exposure::Confirmed && a.criticality >= POTENTIAL_CRITICALITY_FLOOR
+        })
         .count() as u32;
 
     // Most severe first, so the panel leads with what matters.

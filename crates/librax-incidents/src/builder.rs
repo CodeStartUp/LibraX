@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use librax_correlation::Cluster;
 use librax_enrichment::Inventory;
@@ -44,7 +44,17 @@ pub struct BuiltIncident {
 
 /// Assigns incident numbers and assembles cases.
 pub struct IncidentBuilder {
+    first_number: u64,
     next_number: u64,
+    /// Incident number already given to the story that opened with this signal.
+    ///
+    /// Incidents are re-derived from scratch whenever telemetry arrives, so a
+    /// number handed out by position would move under the analyst: the case they
+    /// have open would become a different case as soon as an unrelated detection
+    /// fired. Keying on the detection that opened the story keeps a case's
+    /// identity for as long as the story exists, and a growing story keeps the
+    /// number it was first given.
+    assigned: HashMap<String, String>,
 }
 
 impl Default for IncidentBuilder {
@@ -57,22 +67,32 @@ impl Default for IncidentBuilder {
 impl IncidentBuilder {
     pub fn starting_at(first_number: u64) -> Self {
         Self {
+            first_number,
             next_number: first_number,
+            assigned: HashMap::new(),
         }
     }
 
-    fn next_id(&mut self) -> String {
+    /// Number for a cluster anchored on `anchor`, reusing the one it already has.
+    fn id_for(&mut self, anchor: &str) -> String {
+        if let Some(existing) = self.assigned.get(anchor) {
+            return existing.clone();
+        }
+
         let id = format!("INC-{:04}", self.next_number);
         self.next_number += 1;
+        self.assigned.insert(anchor.to_string(), id.clone());
         id
     }
 
+    /// Forgets assignments, so a cleared console starts numbering again.
+    pub fn reset(&mut self) {
+        self.assigned.clear();
+        self.next_number = self.first_number;
+    }
+
     /// Builds an incident, or `None` when the cluster does not warrant one.
-    pub fn build(
-        &mut self,
-        ctx: &IncidentContext<'_>,
-        cluster: &Cluster,
-    ) -> Option<BuiltIncident> {
+    pub fn build(&mut self, ctx: &IncidentContext<'_>, cluster: &Cluster) -> Option<BuiltIncident> {
         let signals: Vec<SecuritySignal> = ctx
             .signals
             .iter()
@@ -128,8 +148,15 @@ impl IncidentBuilder {
         let first_seen = signals.iter().map(|s| s.timestamp).min()?;
         let last_seen = signals.iter().map(|s| s.timestamp).max()?;
 
+        // The detection that opened the story identifies it. Signals ids are
+        // derived from their evidence, so this survives a rebuild.
+        let anchor = signals
+            .iter()
+            .min_by_key(|s| (s.timestamp, s.signal_id.clone()))
+            .map(|s| s.signal_id.clone())?;
+
         let incident = Incident {
-            incident_id: self.next_id(),
+            incident_id: self.id_for(&anchor),
             title: title_for(&signals, &prog),
             status: IncidentStatus::New,
             signals: signals.iter().map(|s| s.signal_id.clone()).collect(),

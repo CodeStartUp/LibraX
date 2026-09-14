@@ -35,8 +35,7 @@ pub async fn health(State(state): State<SharedState>) -> Json<SourceHealthRespon
                 if health.source_type == librax_types::SourceType::Edr {
                     health.assets_reporting = reporting;
                     health.assets_expected = expected;
-                    health.coverage_percent =
-                        reporting as f32 / expected.max(1) as f32 * 100.0;
+                    health.coverage_percent = reporting as f32 / expected.max(1) as f32 * 100.0;
                 }
 
                 SourceHealthEntry {

@@ -8,7 +8,7 @@ use std::collections::HashSet;
 use std::sync::Arc;
 
 use chrono::Utc;
-use librax_connectors::synthetic::{TelemetryGenerator, scenario};
+use librax_connectors::synthetic::{TelemetryGenerator, attacks, scenario};
 use librax_detection::DetectionEngine;
 use librax_enrichment::{Enricher, Inventory, InventorySpec, demo};
 use librax_mitre::MitreCatalog;
@@ -39,6 +39,28 @@ fn detect(raws: &[RawEvent]) -> Vec<SecuritySignal> {
 
 fn chain_signals() -> Vec<SecuritySignal> {
     detect(&scenario::attack_chain(Utc::now()))
+}
+
+/// The launcher advertises what each playbook should produce, and the console
+/// shows that list to the analyst before they launch it. A payload written in one
+/// crate against field names the parser does not read would quietly break that
+/// promise -- which is exactly how imaging retrievals went undetected.
+#[test]
+fn every_playbook_raises_the_detections_it_advertises() {
+    let inventory = small_inventory();
+
+    for kind in attacks::catalog() {
+        let events = attacks::generate(&kind.id, "ATK", Utc::now(), &inventory, 5);
+        let fired: HashSet<String> = detect(&events).into_iter().map(|s| s.detector_id).collect();
+
+        for expected in &kind.expected_detections {
+            assert!(
+                fired.contains(expected),
+                "{}: {expected} did not fire; what did: {fired:?}",
+                kind.id
+            );
+        }
+    }
 }
 
 #[test]
@@ -173,7 +195,11 @@ fn the_intrusion_reaches_the_patient_database() {
 fn volumetric_attack_collapses_to_a_single_signal() {
     let signals = detect(&[scenario::ddos_burst(Utc::now())]);
 
-    assert_eq!(signals.len(), 1, "1.8M connections must not become 1.8M alerts");
+    assert_eq!(
+        signals.len(),
+        1,
+        "1.8M connections must not become 1.8M alerts"
+    );
     assert_eq!(signals[0].detector_id, "network_volume_anomaly");
     assert!(signals[0].mitre.iter().any(|m| m.technique_id == "T1498"));
 }

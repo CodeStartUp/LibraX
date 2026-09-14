@@ -121,6 +121,82 @@ fn the_critical_incident_is_inc_0042() {
     assert_eq!(incident.duration_minutes(), 31);
 }
 
+/// Incidents are re-derived from scratch on every batch. If numbering followed
+/// the queue order, the case an analyst has open would silently become a
+/// different case as soon as an unrelated flood arrived and sorted above it.
+#[test]
+fn a_case_keeps_its_number_when_the_queue_changes() {
+    let now = Utc::now();
+    let inventory = Arc::new(Inventory::generate(InventorySpec {
+        seed: 42,
+        hospitals: 18,
+        endpoints: 10_482,
+    }));
+
+    let chain = scenario::attack_chain(now);
+    let flood = scenario::ddos_burst(now + Duration::minutes(4));
+
+    let mut builder = IncidentBuilder::default();
+
+    let first = build_with(&mut builder, &inventory, &chain);
+    let intrusion = first
+        .iter()
+        .find(|i| i.incident.signals.len() > 5)
+        .expect("the intrusion should be a case on its own");
+    let original = intrusion.incident.incident_id.clone();
+    assert_eq!(original, "INC-0042");
+
+    let mut both = chain.clone();
+    both.push(flood);
+    let second = build_with(&mut builder, &inventory, &both);
+
+    let intrusion_again = second
+        .iter()
+        .find(|i| i.incident.signals.len() > 5)
+        .expect("the intrusion is still a case");
+    assert_eq!(
+        intrusion_again.incident.incident_id, original,
+        "the intrusion changed case number when the flood arrived"
+    );
+    assert!(
+        second
+            .iter()
+            .any(|i| i.incident.incident_id != original && i.incident.signals.len() == 1),
+        "the flood should have opened a case of its own"
+    );
+}
+
+/// One pass of the pipeline against a builder the caller keeps.
+fn build_with(
+    builder: &mut IncidentBuilder,
+    inventory: &Arc<Inventory>,
+    raws: &[RawEvent],
+) -> Vec<BuiltIncident> {
+    let enricher = Enricher::shared(Arc::clone(inventory));
+    let mut normalizer = Normalizer::new();
+    let mut outcome = normalizer.normalize_batch(raws);
+    enricher.enrich_all(&mut outcome.events);
+    let events = outcome.events;
+
+    let mut resolver = EntityResolver::from_inventory(enricher.inventory());
+    resolver.observe(&events);
+
+    let catalog = Arc::new(MitreCatalog::embedded());
+    let signals = DetectionEngine::new(Arc::clone(&catalog)).run(&events);
+    let clusters = Correlator::default().cluster(&signals, &resolver);
+
+    builder.build_all(
+        &IncidentContext {
+            signals: &signals,
+            events: &events,
+            resolver: &resolver,
+            inventory: enricher.inventory(),
+            catalog: &catalog,
+        },
+        &clusters,
+    )
+}
+
 #[test]
 fn the_incident_carries_everything_the_console_needs() {
     let run = full_demo();
@@ -145,7 +221,10 @@ fn the_timeline_runs_from_phishing_to_ransomware() {
     let run = full_demo();
     let evidence = &run.incidents[0].incident.evidence;
 
-    assert_eq!(evidence.first().map(|e| e.event_id.as_str()), Some("EVT-01"));
+    assert_eq!(
+        evidence.first().map(|e| e.event_id.as_str()),
+        Some("EVT-01")
+    );
     assert_eq!(evidence.last().map(|e| e.event_id.as_str()), Some("EVT-11"));
 
     for pair in evidence.windows(2) {

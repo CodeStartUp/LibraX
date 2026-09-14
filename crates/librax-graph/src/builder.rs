@@ -2,9 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use librax_enrichment::Inventory;
 use librax_entities::EntityResolver;
-use librax_types::{
-    CanonicalEvent, EntityKind, EntityRef, Exposure, RelationType, SecuritySignal,
-};
+use librax_types::{CanonicalEvent, EntityKind, EntityRef, Exposure, RelationType, SecuritySignal};
 
 use crate::graph::{AttackGraph, GraphEdge, GraphNode};
 
@@ -64,13 +62,7 @@ pub fn build(
             .unwrap_or_default();
 
         for derived in derive(event, resolver) {
-            let from = touch_node(
-                &mut nodes,
-                derived.from,
-                event,
-                &confirmed,
-                inventory,
-            );
+            let from = touch_node(&mut nodes, derived.from, event, &confirmed, inventory);
             let to = touch_node(&mut nodes, derived.to, event, &confirmed, inventory);
 
             if from == to {
@@ -155,8 +147,7 @@ fn touch_node(
 
     // Anything the inventory cannot place, and that resolution left as a bare
     // address or domain, is outside the estate.
-    let external =
-        asset.is_none() && matches!(entity.kind, EntityKind::Ip | EntityKind::Domain);
+    let external = asset.is_none() && matches!(entity.kind, EntityKind::Ip | EntityKind::Domain);
 
     let node = nodes.entry(id.clone()).or_insert_with(|| GraphNode {
         id: id.clone(),
@@ -180,6 +171,8 @@ fn touch_node(
                 event.enrichment.hospital.clone()
             }
         }),
+        platform: asset.map(|a| a.platform),
+        platform_label: asset.map(|a| a.platform.label().to_string()),
         external,
         event_count: 0,
         first_seen: event.timestamp,
@@ -199,8 +192,12 @@ fn derive(event: &CanonicalEvent, resolver: &EntityResolver) -> Vec<Derived> {
     let principal = event.principal.as_ref().map(|e| resolver.resolve(e));
     let host = event.host.as_ref().map(|e| resolver.resolve(e));
     let target = event.target.as_ref().map(|e| resolver.resolve(e));
-    let src = event.src_ip().map(|ip| resolver.resolve(&EntityRef::ip(ip)));
-    let dst = event.dst_ip().map(|ip| resolver.resolve(&EntityRef::ip(ip)));
+    let src = event
+        .src_ip()
+        .map(|ip| resolver.resolve(&EntityRef::ip(ip)));
+    let dst = event
+        .dst_ip()
+        .map(|ip| resolver.resolve(&EntityRef::ip(ip)));
     let domain = event
         .destination
         .as_ref()
@@ -223,7 +220,12 @@ fn derive(event: &CanonicalEvent, resolver: &EntityResolver) -> Vec<Derived> {
         // A remote client authenticating in and being handed an internal address.
         "vpn_session_start" => {
             if let (Some(user), Some(assigned)) = (principal.as_ref(), dst.as_ref()) {
-                out.push(edge(user.clone(), RelationType::Uses, assigned.clone(), 0.90));
+                out.push(edge(
+                    user.clone(),
+                    RelationType::Uses,
+                    assigned.clone(),
+                    0.90,
+                ));
             }
             if let (Some(client), Some(assigned)) = (src.as_ref(), dst.as_ref()) {
                 out.push(edge(
@@ -308,7 +310,12 @@ fn derive(event: &CanonicalEvent, resolver: &EntityResolver) -> Vec<Derived> {
                 out.push(edge(actor.clone(), relation, file.clone(), 0.94));
             }
             if let (Some(machine), Some(file)) = (host.as_ref(), target.as_ref()) {
-                out.push(edge(machine.clone(), RelationType::Creates, file.clone(), 0.9));
+                out.push(edge(
+                    machine.clone(),
+                    RelationType::Creates,
+                    file.clone(),
+                    0.9,
+                ));
             }
         }
 

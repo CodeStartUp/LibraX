@@ -144,7 +144,11 @@ fn named(graph: &AttackGraph, kind: EntityKind) -> Vec<String> {
 }
 
 fn all_evidence(incident: &Incident) -> Vec<String> {
-    incident.evidence.iter().map(|e| e.event_id.clone()).collect()
+    incident
+        .evidence
+        .iter()
+        .map(|e| e.event_id.clone())
+        .collect()
 }
 
 fn summary(input: &BriefingInput<'_>) -> Vec<Statement> {

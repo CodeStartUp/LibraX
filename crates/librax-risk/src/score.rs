@@ -95,8 +95,7 @@ pub fn assess_risk(inputs: &RiskInputs<'_>) -> RiskScore {
 fn threat_confidence(inputs: &RiskInputs<'_>, out: &mut Vec<RiskContribution>) -> f32 {
     let signals = inputs.signals;
 
-    let mean_confidence =
-        signals.iter().map(|s| s.confidence).sum::<f32>() / signals.len() as f32;
+    let mean_confidence = signals.iter().map(|s| s.confidence).sum::<f32>() / signals.len() as f32;
     let detection = threat_points::DETECTION_STRENGTH * mean_confidence;
     out.push(contribution(
         "Detection strength",
@@ -111,8 +110,7 @@ fn threat_confidence(inputs: &RiskInputs<'_>, out: &mut Vec<RiskContribution>) -
     let detectors: HashSet<&str> = signals.iter().map(|s| s.detector_id.as_str()).collect();
     // Eight independent detectors is treated as full corroboration; beyond that
     // the marginal evidence value is small.
-    let corroboration =
-        threat_points::CORROBORATION * (detectors.len().min(8) as f32 / 8.0);
+    let corroboration = threat_points::CORROBORATION * (detectors.len().min(8) as f32 / 8.0);
     out.push(contribution(
         "Independent detectors",
         corroboration,

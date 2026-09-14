@@ -7,6 +7,7 @@ use tracing_subscriber::EnvFilter;
 
 mod error;
 mod routes;
+mod runs;
 mod state;
 
 use state::AppState;
@@ -40,8 +41,13 @@ async fn main() {
     );
 
     if demo_mode {
-        seed_demo(&state);
+        seed_background(&state);
     }
+
+    // Telemetry keeps arriving for as long as the service runs, so source health,
+    // event rates and blind-spot detection reflect a live stream rather than one
+    // batch frozen at startup.
+    tokio::spawn(background_telemetry(Arc::clone(&state)));
 
     let listener = tokio::net::TcpListener::bind(bind_addr)
         .await
@@ -54,57 +60,60 @@ async fn main() {
         .expect("server error");
 }
 
-/// Ingests the scripted intrusion plus background noise, so a judge sees a
-/// populated SOC the moment the page loads rather than an empty queue.
-fn seed_demo(state: &Arc<AppState>) {
+/// Fills the retained window with ordinary hospital traffic.
+///
+/// No attack is seeded. The console opens on a quiet estate with live sources and
+/// an empty incident queue, and the analyst launches attacks from the console --
+/// watching correlation happen is the demonstration, and it does not work if the
+/// incident is already sitting there when the page loads.
+fn seed_background(state: &Arc<AppState>) {
     use chrono::{Duration, Utc};
     use librax_connectors::synthetic::TelemetryGenerator;
 
-    let noise_count = state.config.demo_noise_events;
     let mut generator = TelemetryGenerator::new(state.inventory_handle(), state.config.seed);
 
-    // Anchored in the recent past so the timeline reads as a shift that has just
-    // happened rather than events dated in the future.
-    let now = Utc::now();
-    let noise_at = now - Duration::minutes(45);
-    let intrusion_start = now - Duration::minutes(40);
-
-    let noise = generator.noise_batch(noise_count, noise_at);
+    // Anchored in the recent past, so the console shows the shift so far rather
+    // than events dated in the future.
+    let noise = generator.noise_batch(
+        state.config.demo_noise_events,
+        Utc::now() - Duration::minutes(45),
+    );
     let report = state.ingest(&noise);
-    tracing::info!(
-        events = report.accepted,
-        signals = report.signals,
-        "background telemetry ingested"
-    );
 
-    let intrusion = generator.attack_chain(intrusion_start);
-    let report = state.ingest(&intrusion);
     tracing::info!(
         events = report.accepted,
         signals = report.signals,
         incidents = report.incidents,
-        "scripted intrusion ingested"
+        "background telemetry ingested; queue starts empty until an attack is launched"
     );
+}
 
-    // A second, unrelated incident, so the queue shows correlation keeping
-    // separate things separate.
-    let ddos = generator.ddos_burst(now - Duration::minutes(15));
-    let report = state.ingest(&[ddos]);
-    tracing::info!(
-        events = report.accepted,
-        incidents = report.incidents,
-        "volumetric burst ingested"
-    );
+/// Interval between background telemetry batches.
+const TELEMETRY_INTERVAL_SECS: u64 = 10;
 
-    state.read(|soc| {
-        for built in &soc.incidents {
-            tracing::info!(
-                incident = %built.incident.incident_id,
-                title = %built.incident.title,
-                risk = built.incident.risk.overall_risk,
-                signals = built.incident.signals.len(),
-                "incident built"
-            );
-        }
-    });
+/// Ordinary traffic, forever.
+///
+/// Without this the event rates on the source-health page decay to zero and every
+/// source eventually reports a blind spot, which would be a lie about a system
+/// that is running perfectly well.
+async fn background_telemetry(state: Arc<AppState>) {
+    use librax_connectors::synthetic::TelemetryGenerator;
+
+    let mut generator =
+        TelemetryGenerator::new(state.inventory_handle(), state.config.seed ^ 0x5EED);
+    let per_batch = (state.config.demo_noise_events / 60).clamp(20, 400);
+    let mut ticker = tokio::time::interval(std::time::Duration::from_secs(TELEMETRY_INTERVAL_SECS));
+
+    loop {
+        ticker.tick().await;
+
+        let batch = generator.noise_batch(per_batch, chrono::Utc::now());
+        let report = state.ingest(&batch);
+
+        tracing::debug!(
+            events = report.accepted,
+            retained = report.signals,
+            "background telemetry batch"
+        );
+    }
 }

@@ -1,13 +1,22 @@
 import type {
+  AttackCatalog,
   AttackGraph,
   Briefing,
   Dashboard,
+  EventFilters,
+  EventSearchResponse,
+  FeedResponse,
+  FileFilters,
+  FilesResponse,
   Health,
   Incident,
   IncidentSummary,
+  LaunchResponse,
+  LookupResponse,
   MitreResponse,
   ResponseAction,
   ResponseListing,
+  RunsResponse,
   SourceHealthResponse,
   Timeline,
 } from './types';
@@ -80,6 +89,39 @@ export const api = {
       `/incidents/${id}/response/simulate`,
       { action_id: actionId, approved_by: approvedBy ?? null },
     ),
+
+  attacks: () => get<AttackCatalog>('/attacks'),
+  runs: () => get<RunsResponse>('/attacks/runs'),
+
+  launch: (attackId: string, speed?: number, campusIndex?: number) =>
+    post<LaunchResponse>('/attacks/launch', {
+      attack_id: attackId,
+      speed: speed ?? null,
+      campus_index: campusIndex ?? null,
+    }),
+
+  reset: () => post<{ cleared: boolean; message: string }>('/reset', {}),
+
+  indicators: () => get<FeedResponse>('/intel/indicators'),
+  lookup: (value: string) => get<LookupResponse>(`/intel/lookup?value=${encodeURIComponent(value)}`),
+
+  files: (filters: FileFilters = {}) => get<FilesResponse>(`/files${query(filters)}`),
+  events: (filters: EventFilters = {}) =>
+    get<EventSearchResponse>(`/events/search${query(filters)}`),
 };
+
+/// Builds a query string, dropping empty filters so a blank search box does not
+/// become `?host=` and match nothing.
+function query(filters: object): string {
+  const params = new URLSearchParams();
+
+  for (const [key, value] of Object.entries(filters)) {
+    if (value === undefined || value === null || value === '' || value === false) continue;
+    params.set(key, String(value));
+  }
+
+  const encoded = params.toString();
+  return encoded ? `?${encoded}` : '';
+}
 
 export { BASE as apiBaseUrl };

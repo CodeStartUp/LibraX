@@ -16,9 +16,7 @@ use librax_graph::AttackGraph;
 use librax_mitre::{MitreCatalog, progression};
 use librax_normalizer::Normalizer;
 use librax_risk::{RiskInputs, assess_blast_radius, assess_risk};
-use librax_types::{
-    BlastRadius, CanonicalEvent, Exposure, RiskScore, SecuritySignal, Severity,
-};
+use librax_types::{BlastRadius, CanonicalEvent, Exposure, RiskScore, SecuritySignal, Severity};
 
 struct Assessed {
     risk: RiskScore,
@@ -90,10 +88,7 @@ fn the_intrusion_scores_as_a_critical_priority() {
 
     println!(
         "threat={:.1} impact={:.1} progression={:.1} overall={:.1}",
-        risk.threat_confidence,
-        risk.business_impact,
-        risk.attack_progression,
-        risk.overall_risk
+        risk.threat_confidence, risk.business_impact, risk.attack_progression, risk.overall_risk
     );
 
     assert!(
@@ -147,7 +142,10 @@ fn the_breakdown_accounts_for_the_score() {
         "Regulated data exposed",
         "Attack progression",
     ] {
-        assert!(factors.contains(&expected), "{expected} missing: {factors:?}");
+        assert!(
+            factors.contains(&expected),
+            "{expected} missing: {factors:?}"
+        );
     }
 }
 
@@ -279,7 +277,10 @@ fn the_patient_database_is_the_impact_driver() {
         .expect("impact must name its driver");
 
     assert!(
-        driver.detail.to_lowercase().contains(&demo::PATIENT_DB.to_lowercase()),
+        driver
+            .detail
+            .to_lowercase()
+            .contains(&demo::PATIENT_DB.to_lowercase()),
         "expected the patient database, got {:?}",
         driver.detail
     );

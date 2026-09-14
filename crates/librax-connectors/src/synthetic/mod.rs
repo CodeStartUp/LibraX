@@ -1,5 +1,6 @@
 //! Deterministic synthetic telemetry for the demo environment.
 
+pub mod attacks;
 pub mod scenario;
 
 use std::sync::Arc;
@@ -22,14 +23,12 @@ const BENIGN_DOMAINS: &[&str] = &[
     "pharmacy-api.partner.example",
 ];
 
-const BENIGN_PROCESSES: &[&str] = &[
-    "chrome.exe",
-    "OUTLOOK.EXE",
-    "EpicClient.exe",
-    "svchost.exe",
-    "MsMpEng.exe",
-    "explorer.exe",
-];
+/// Routine software on the fleet, taken from the indicator feed's own table.
+///
+/// Real hashes matter here: without them the file explorer shows the whole estate
+/// as UNKNOWN, and an analyst cannot tell "nobody has assessed this" apart from
+/// "the sensor did not report what it was".
+use librax_enrichment::FLEET_SOFTWARE as BENIGN_PROCESSES;
 
 /// Generates the background noise the SOC normally swims in, plus the scripted
 /// intrusion. Reproducible: same seed, same events, every run.
@@ -119,6 +118,14 @@ impl TelemetryGenerator {
         options[idx]
     }
 
+    /// A routine process as (name, sha256, md5), dropping the signer the feed
+    /// carries but the endpoint agent reports separately.
+    fn choose_process(&mut self) -> (&'static str, &'static str, &'static str) {
+        let idx = self.rng.range_usize(0, BENIGN_PROCESSES.len());
+        let (name, sha256, md5, _signer) = BENIGN_PROCESSES[idx];
+        (name, sha256, md5)
+    }
+
     /// `count` benign events, timestamped around `at`.
     pub fn noise_batch(&mut self, count: usize, at: DateTime<Utc>) -> Vec<RawEvent> {
         (0..count).filter_map(|_| self.noise_event(at)).collect()
@@ -157,6 +164,7 @@ impl TelemetryGenerator {
             340..=619 => {
                 let host = self.pick_workstation()?;
                 let identity = self.pick_identity()?;
+                let (process, sha256, md5) = self.choose_process();
                 (
                     SourceType::Edr,
                     format!("edr-{}", campus_suffix(&host)),
@@ -164,9 +172,11 @@ impl TelemetryGenerator {
                         "event_type": "process_create",
                         "device_name": host.entity.name,
                         "user_name": identity.entity.name,
-                        "process_name": self.choose_str(BENIGN_PROCESSES),
+                        "process_name": process,
                         "parent_process": "explorer.exe",
                         "process_cmdline": "-- routine startup --",
+                        "process_sha256": sha256,
+                        "process_md5": md5,
                         "signed": true,
                         "pid": self.rng.range(1000, 40_000)
                     }),
@@ -436,7 +446,10 @@ impl SyntheticFleet {
                     (expected, expected)
                 };
                 Arc::new(SyntheticSource {
-                    source_id: format!("{}-synthetic", source_type.label().to_lowercase().replace(' ', "-")),
+                    source_id: format!(
+                        "{}-synthetic",
+                        source_type.label().to_lowercase().replace(' ', "-")
+                    ),
                     source_type,
                     generator: Arc::clone(&generator),
                     events_per_collect: 25,

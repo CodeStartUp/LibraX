@@ -32,12 +32,16 @@ impl Detector for PowerShellDetector {
 
     fn evaluate(&self, ctx: &DetectionContext<'_>) -> Vec<SecuritySignal> {
         ctx.matching(|e| {
-            e.category == EventCategory::Process
-                && lower(e.process_name()).contains("powershell")
+            e.category == EventCategory::Process && lower(e.process_name()).contains("powershell")
         })
         .filter_map(|event| {
             let cmdline = lower(event.command_line());
-            let parent = lower(event.process.as_ref().and_then(|p| p.parent_name.as_deref()));
+            let parent = lower(
+                event
+                    .process
+                    .as_ref()
+                    .and_then(|p| p.parent_name.as_deref()),
+            );
 
             let encoded = ["-enc", "-encodedcommand", "-e "]
                 .iter()
@@ -58,7 +62,9 @@ impl Detector for PowerShellDetector {
             }
             if office_parent {
                 confidence += 0.20;
-                reasons.push(format!("spawned by {parent}, which indicates macro execution"));
+                reasons.push(format!(
+                    "spawned by {parent}, which indicates macro execution"
+                ));
             }
             if cmdline.contains("hidden") {
                 confidence += 0.10;
@@ -143,7 +149,9 @@ impl Detector for DataStagingDetector {
 
                 if attr_bool(event, "in_temp_directory") {
                     confidence += 0.20;
-                    reasons.push("written to a temporary directory rather than a user share".to_string());
+                    reasons.push(
+                        "written to a temporary directory rather than a user share".to_string(),
+                    );
                 }
 
                 if size_bytes >= 100_000_000.0 {
@@ -167,7 +175,10 @@ impl Detector for DataStagingDetector {
                 let mut mitre = Vec::new();
                 for (id, note) in [
                     ("T1074.001", "collected data consolidated in one location"),
-                    ("T1560.001", "archive utility used to compress the collection"),
+                    (
+                        "T1560.001",
+                        "archive utility used to compress the collection",
+                    ),
                 ] {
                     if let Some(reference) = ctx.catalog.reference(id, confidence, note) {
                         mitre.push(reference);
@@ -245,7 +256,9 @@ impl Detector for RansomwareDetector {
 
                 if new_extensions > 0 {
                     confidence += 0.20;
-                    reasons.push(format!("{new_extensions} previously unseen file extension(s)"));
+                    reasons.push(format!(
+                        "{new_extensions} previously unseen file extension(s)"
+                    ));
                 }
 
                 if attr_bool(event, "entropy_increase") {
@@ -255,11 +268,9 @@ impl Detector for RansomwareDetector {
 
                 let mut mitre = Vec::new();
                 if shadow_deleted
-                    && let Some(reference) = ctx.catalog.reference(
-                        "T1490",
-                        confidence,
-                        "volume shadow copies destroyed",
-                    )
+                    && let Some(reference) =
+                        ctx.catalog
+                            .reference("T1490", confidence, "volume shadow copies destroyed")
                 {
                     mitre.push(reference);
                 }

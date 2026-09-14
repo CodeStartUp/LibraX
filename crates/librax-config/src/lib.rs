@@ -80,10 +80,7 @@ impl Config {
                 "LIBRAX_CORRELATION_WINDOW_MINUTES",
                 defaults.correlation_window_minutes,
             ),
-            event_window_limit: parse_env(
-                "LIBRAX_EVENT_WINDOW_LIMIT",
-                defaults.event_window_limit,
-            ),
+            event_window_limit: parse_env("LIBRAX_EVENT_WINDOW_LIMIT", defaults.event_window_limit),
             mitre_dataset_path: optional_env("LIBRAX_MITRE_DATASET"),
             database_url: optional_env("DATABASE_URL"),
             redis_url: optional_env("REDIS_URL"),
