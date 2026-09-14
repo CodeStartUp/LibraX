@@ -4,17 +4,12 @@ use librax_enrichment::{AssetRole, Inventory};
 use librax_graph::AttackGraph;
 use librax_types::{AffectedAsset, BlastRadius, EntityKind, EntityRef, Exposure, Severity};
 
-/// Assets beyond the incident graph that we are willing to call *potentially*
-/// reachable. Kept small so the panel stays useful rather than alarming.
+
 const MAX_POTENTIAL_ASSETS: usize = 12;
-/// Only high-value neighbours are worth surfacing as potential exposure.
+
 const POTENTIAL_CRITICALITY_FLOOR: u8 = 80;
 
-/// Walks the graph outward from the confirmed nodes, then considers high-value
-/// neighbours on the same campus.
-///
-/// The three exposure levels are kept strictly apart. A reachable database is
-/// not a breached database, and this function never promotes one to the other.
+
 pub fn assess_blast_radius(
     graph: &AttackGraph,
     inventory: &Inventory,
@@ -31,7 +26,7 @@ pub fn assess_blast_radius(
             continue;
         };
 
-        // Processes, files and bare domains are evidence, not assets to count.
+
         if matches!(
             node.kind,
             EntityKind::Process | EntityKind::File | EntityKind::Domain | EntityKind::Session
@@ -61,9 +56,7 @@ pub fn assess_blast_radius(
         });
     }
 
-    // High-value neighbours sharing a campus with something confirmed. These are
-    // inventory adjacency rather than observed activity, so they can never be
-    // more than Potential.
+
     let compromised_campuses: HashSet<String> = assets
         .iter()
         .filter(|a| a.exposure == Exposure::Confirmed)
@@ -137,9 +130,7 @@ pub fn assess_blast_radius(
         .filter(|a| a.exposure != Exposure::Confirmed)
         .count() as u32;
 
-    // The severity of the blast radius is driven by what is actually compromised.
-    // Counting merely-reachable assets here would let campus co-location alone
-    // report a critical blast radius for an incident that breached nothing.
+
     let confirmed = ConfirmedCounts {
         users: count_confirmed(&is_user),
         endpoints: count_confirmed(&is_endpoint),
@@ -154,7 +145,7 @@ pub fn assess_blast_radius(
         })
         .count() as u32;
 
-    // Most severe first, so the panel leads with what matters.
+
     assets.sort_by(|a, b| {
         a.exposure
             .label()
@@ -174,7 +165,7 @@ pub fn assess_blast_radius(
     }
 }
 
-/// Counts restricted to assets the evidence places inside the intrusion.
+
 struct ConfirmedCounts {
     users: u32,
     endpoints: u32,
@@ -198,8 +189,7 @@ fn level(confirmed: &ConfirmedCounts, high_value_reachable: u32) -> Severity {
         Severity::Info
     };
 
-    // High-value neighbours raise the floor to Medium, and no further. They are
-    // adjacent, not breached, and campus co-location is weak evidence of reach.
+
     if high_value_reachable >= 2 && base < Severity::Medium {
         Severity::Medium
     } else {
@@ -233,7 +223,7 @@ mod level_tests {
 
     #[test]
     fn reachable_neighbours_alone_never_reach_critical() {
-        // A gateway flood: one server confirmed, high-value assets merely nearby.
+
         let confirmed = ConfirmedCounts {
             servers: 1,
             ..counts()

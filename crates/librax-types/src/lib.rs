@@ -1,7 +1,4 @@
-//! Canonical shared types for LibraX.
-//!
-//! Every crate in the workspace converges on the models defined here, so no
-//! detector, correlator or scorer ever sees a vendor-specific event shape.
+
 
 pub mod entity;
 pub mod event;

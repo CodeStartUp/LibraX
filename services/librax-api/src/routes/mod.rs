@@ -14,8 +14,8 @@ pub mod inventory;
 pub mod sources;
 
 pub fn router(state: SharedState) -> Router {
-    // The frontend is served from a different origin in development, so CORS is
-    // permissive by default and narrowed by configuration in deployment.
+
+
     let cors = if state.config.cors_allow_origin == "*" {
         CorsLayer::new()
             .allow_origin(Any)
@@ -37,7 +37,7 @@ pub fn router(state: SharedState) -> Router {
     Router::new()
         .route("/api/v1/health", get(dashboard::health))
         .route("/api/v1/dashboard", get(dashboard::dashboard))
-        .route("/api/v1/events", post(events::ingest))
+        .route("/api/v1/events", post(events::ingest).get(events::search))
         .route("/api/v1/signals", get(events::signals))
         .route("/api/v1/events/search", get(events::search))
         .route("/api/v1/attacks", get(attacks::catalog))

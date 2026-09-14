@@ -20,7 +20,7 @@ use parking_lot::RwLock;
 
 use crate::runs::{AttackRun, RunStatus};
 
-/// Counters the dashboard reports.
+
 #[derive(Debug, Default, Clone)]
 pub struct Stats {
     pub events_received: u64,
@@ -30,22 +30,19 @@ pub struct Stats {
     pub last_ingest_at: Option<DateTime<Utc>>,
 }
 
-/// Everything mutable, behind one lock.
-///
-/// A single writer lock is the right trade here: ingest is batched, so lock
-/// contention is low, and it keeps the pipeline's ordering guarantees obvious.
+
 pub struct SocState {
     pub normalizer: Normalizer,
     pub resolver: EntityResolver,
     pub events: Vec<CanonicalEvent>,
     pub signals: Vec<SecuritySignal>,
     pub incidents: Vec<BuiltIncident>,
-    /// Kept across passes: it remembers which case number each story already has.
+
     pub incident_builder: IncidentBuilder,
     pub actions: HashMap<String, ResponseAction>,
     pub source_health: HashMap<String, SourceHealth>,
     pub stats: Stats,
-    /// Attacks played against the estate, newest last.
+
     pub runs: Vec<AttackRun>,
 }
 
@@ -107,8 +104,7 @@ impl AppState {
         self.enricher.inventory()
     }
 
-    /// Shared handle for components that need their own reference, such as the
-    /// telemetry generator.
+
     pub fn inventory_handle(&self) -> Arc<Inventory> {
         self.enricher.inventory_handle()
     }
@@ -121,8 +117,7 @@ impl AppState {
         &self.intel
     }
 
-    /// Adds a run record and returns it, so the caller can answer the launch
-    /// request before any events have been delivered.
+
     pub fn register_run(&self, run: AttackRun) -> AttackRun {
         let mut state = self.inner.write();
         state.runs.push(run.clone());
@@ -134,10 +129,7 @@ impl AppState {
         state.runs.iter_mut().find(|r| r.run_id == run_id).map(f)
     }
 
-    /// Records what a run's events actually turned into.
-    ///
-    /// Attribution is by event id rather than by timing: two attacks running at
-    /// once must not claim each other's detections.
+
     pub fn attribute_run(&self, run_id: &str) {
         let mut state = self.inner.write();
 
@@ -180,10 +172,7 @@ impl AppState {
         run.incident_ids = incidents;
     }
 
-    /// Clears observed telemetry while keeping the estate and the feed.
-    ///
-    /// The inventory is the environment, not evidence, so it survives; runs are
-    /// dropped because their events no longer exist to back them.
+
     pub fn clear_telemetry(&self) {
         let mut state = self.inner.write();
 
@@ -193,8 +182,8 @@ impl AppState {
         state.actions.clear();
         state.source_health.clear();
         state.normalizer = Normalizer::new();
-        // Numbering restarts too, so the next attack launched opens the documented
-        // case number rather than continuing from a queue nobody can see any more.
+
+
         state.incident_builder.reset();
         state.runs.retain(|r| r.status == RunStatus::Running);
         state.stats = Stats {
@@ -211,12 +200,7 @@ impl AppState {
         self.detection.detector_count()
     }
 
-    /// Runs the pipeline over a batch of raw events.
-    ///
-    /// Detection, correlation and incident assembly all re-run over the retained
-    /// window rather than incrementally. That is deliberate: signal and incident
-    /// ids are derived, so a full re-run is idempotent and cannot produce
-    /// duplicates, and at demo volumes it costs milliseconds.
+
     pub fn ingest(&self, raws: &[RawEvent]) -> IngestReport {
         let mut state = self.inner.write();
 
@@ -237,7 +221,7 @@ impl AppState {
         state.resolver.observe(&events);
         state.events.extend(events);
 
-        // Keep the retained window bounded, oldest first.
+
         if state.events.len() > self.config.event_window_limit {
             let excess = state.events.len() - self.config.event_window_limit;
             state.events.drain(0..excess);
@@ -254,7 +238,7 @@ impl AppState {
         }
     }
 
-    /// Re-derives signals, clusters and incidents from the retained events.
+
     fn recompute(&self, state: &mut SocState) {
         state.signals = self.detection.run(&state.events);
 
@@ -268,13 +252,11 @@ impl AppState {
             catalog: &self.catalog,
         };
 
-        // The builder lives in state because it remembers which number each story
-        // already carries. Rebuilding with a fresh one would renumber the queue on
-        // every batch, and the case the analyst has open would become another case.
+
         let built = state.incident_builder.build_all(&ctx, &clusters);
         state.incidents = built;
 
-        // Refresh recommendations, preserving any action an analyst already acted on.
+
         for built in &state.incidents {
             for action in self
                 .response
@@ -289,7 +271,7 @@ impl AppState {
         }
     }
 
-    /// The analyst briefing for an incident.
+
     pub fn briefing(&self, built: &BuiltIncident) -> Briefing {
         let playbooks = self.response.matching_playbooks(&built.incident);
 
@@ -302,7 +284,7 @@ impl AppState {
         })
     }
 
-    /// Mutates a stored response action.
+
     pub fn with_action<R>(
         &self,
         action_id: &str,
@@ -322,7 +304,7 @@ pub struct IngestReport {
     pub incidents: usize,
 }
 
-/// Updates per-source health from what actually arrived.
+
 fn record_source_health(
     health: &mut HashMap<String, SourceHealth>,
     raws: &[RawEvent],
@@ -334,14 +316,14 @@ fn record_source_health(
         health
             .entry(raw.source_id.clone())
             .or_insert_with(|| {
-                // Everything in this build is simulator-backed, and says so.
+
                 SourceHealth::new(raw.source_id.clone(), raw.source_type, true)
             })
             .observe(now);
     }
 
     if rejected > 0 {
-        // Attribute rejections to the sources present in this batch.
+
         let sources: Vec<String> = raws.iter().map(|r| r.source_id.clone()).collect();
         for source_id in sources.iter().take(rejected) {
             if let Some(entry) = health.get_mut(source_id) {

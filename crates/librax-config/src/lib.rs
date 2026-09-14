@@ -1,39 +1,34 @@
-//! Configuration, read from the environment with usable defaults.
-//!
-//! Every default here is chosen so that `docker compose up` produces a working
-//! demo with no `.env` file present. A malformed value logs a warning and falls
-//! back rather than aborting startup, because a demo that refuses to boot over a
-//! typo is worse than one running on a default.
+
 
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
 use serde::Serialize;
 
-/// Endpoints in the synthetic estate, matching the scenario brief.
+
 pub const DEFAULT_ENDPOINTS: u32 = 10_482;
 pub const DEFAULT_HOSPITALS: u32 = 18;
-/// The demo intrusion is documented as INC-0042, so numbering starts there.
+
 pub const DEFAULT_INCIDENT_START: u64 = 42;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct Config {
     pub bind_addr: SocketAddr,
-    /// Seeds the environment and the simulator so runs are reproducible.
+
     pub seed: u64,
     pub hospitals: u32,
     pub endpoints: u32,
     pub incident_start_number: u64,
-    /// Generates and ingests the scripted intrusion at startup.
+
     pub demo_mode: bool,
-    /// How much background noise to generate alongside it.
+
     pub demo_noise_events: usize,
     pub correlation_window_minutes: i64,
-    /// Upper bound on the retained event window, so a long run cannot grow
-    /// without limit.
+
+
     pub event_window_limit: usize,
-    /// Overrides the compiled-in ATT&CK dataset.
+
     pub mitre_dataset_path: Option<String>,
-    /// Present for future persistence; the demo runs entirely in memory.
+
     pub database_url: Option<String>,
     pub redis_url: Option<String>,
     pub cors_allow_origin: String,
@@ -98,7 +93,7 @@ fn optional_env(key: &str) -> Option<String> {
         .filter(|value| !value.is_empty())
 }
 
-/// Reads and parses a variable, falling back to `default` on absence or garbage.
+
 fn parse_env<T>(key: &str, default: T) -> T
 where
     T: std::str::FromStr + std::fmt::Debug,
@@ -140,7 +135,7 @@ mod tests {
 
     #[test]
     fn blank_values_are_treated_as_absent() {
-        // Docker Compose passes empty strings for unset variables.
+
         unsafe { std::env::set_var("LIBRAX_TEST_BLANK", "   ") };
         assert_eq!(optional_env("LIBRAX_TEST_BLANK"), None);
         unsafe { std::env::remove_var("LIBRAX_TEST_BLANK") };

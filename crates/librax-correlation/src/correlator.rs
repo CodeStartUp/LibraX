@@ -5,7 +5,7 @@ use librax_entities::EntityResolver;
 use librax_types::{EntityKind, EntityRef, SecuritySignal, Severity};
 use serde::Serialize;
 
-/// The dimensions along which two signals can be related.
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum LinkFactor {
@@ -29,10 +29,7 @@ impl LinkFactor {
         }
     }
 
-    /// Whether this factor is real context rather than mere coincidence.
-    ///
-    /// Temporal proximity and stage ordering are both true of any two alerts in a
-    /// busy SOC, so neither can justify a link on its own.
+
     pub fn is_substantive(self) -> bool {
         matches!(
             self,
@@ -48,14 +45,14 @@ impl LinkFactor {
 pub struct FactorMatch {
     pub factor: LinkFactor,
     pub label: String,
-    /// 0.0-1.0 strength of this dimension.
+
     pub strength: f32,
-    /// Contribution to the link score after weighting.
+
     pub contribution: f32,
     pub detail: String,
 }
 
-/// A scored relationship between two signals.
+
 #[derive(Debug, Clone, Serialize)]
 pub struct Link {
     pub from_signal: String,
@@ -106,9 +103,9 @@ impl CorrelationWeights {
 
 #[derive(Debug, Clone)]
 pub struct CorrelationConfig {
-    /// How far apart two signals can be and still be considered related.
+
     pub window: Duration,
-    /// Minimum normalised score for a link to be drawn.
+
     pub min_link_score: f32,
     pub weights: CorrelationWeights,
 }
@@ -123,15 +120,15 @@ impl Default for CorrelationConfig {
     }
 }
 
-/// A group of signals LibraX believes belong to one story.
+
 #[derive(Debug, Clone, Serialize)]
 pub struct Cluster {
     pub signal_ids: Vec<String>,
     pub links: Vec<Link>,
-    /// Mean link score across the cluster.
+
     pub cohesion: f32,
     pub shared_entities: Vec<EntityRef>,
-    /// Distinct, human-readable reasons, for the "why connected?" panel.
+
     pub reasons: Vec<String>,
     pub peak_severity: Severity,
 }
@@ -165,7 +162,7 @@ impl Correlator {
         &self.config
     }
 
-    /// Scores one pair, or returns `None` when there is no defensible link.
+
     pub fn link(
         &self,
         a: &SecuritySignal,
@@ -176,7 +173,7 @@ impl Correlator {
         let weights = &self.config.weights;
         let mut factors: Vec<FactorMatch> = Vec::new();
 
-        // Temporal: necessary but never sufficient.
+
         let gap = (b.timestamp - a.timestamp).abs();
         if gap > self.config.window {
             return None;
@@ -280,7 +277,7 @@ impl Correlator {
             });
         }
 
-        // Stage ordering: corroborating, not load-bearing.
+
         if let (Some(first), Some(second)) = (a.primary_tactic(), b.primary_tactic()) {
             let (earlier, later) = if a.timestamp <= b.timestamp {
                 (first, second)
@@ -298,7 +295,7 @@ impl Correlator {
             }
         }
 
-        // The load-bearing check: without shared context this is a coincidence.
+
         if !factors.iter().any(|f| f.factor.is_substantive()) {
             return None;
         }
@@ -316,7 +313,7 @@ impl Correlator {
         })
     }
 
-    /// Groups signals into clusters by transitive linkage.
+
     pub fn cluster(&self, signals: &[SecuritySignal], resolver: &EntityResolver) -> Vec<Cluster> {
         if signals.is_empty() {
             return Vec::new();
@@ -348,7 +345,7 @@ impl Correlator {
             .map(|members| self.build_cluster(&members, signals, &resolved, &links))
             .collect();
 
-        // Biggest, most severe story first.
+
         clusters.sort_by(|a, b| {
             b.peak_severity
                 .cmp(&a.peak_severity)
@@ -386,8 +383,7 @@ impl Correlator {
             cluster_links.iter().map(|l| l.score).sum::<f32>() / cluster_links.len() as f32
         };
 
-        // Entities present in more than one signal are what actually ties the
-        // cluster together; a one-off entity is incidental.
+
         let mut counts: HashMap<&EntityRef, usize> = HashMap::new();
         for &index in members {
             for entity in &resolved[index] {
@@ -447,9 +443,7 @@ fn shared_entities(a: &[EntityRef], b: &[EntityRef]) -> Vec<EntityRef> {
         .collect()
 }
 
-/// Union-find, so transitive relationships form one cluster: if A links to B and
-/// B links to C, all three belong to the same story even when A and C share
-/// nothing directly.
+
 struct DisjointSet {
     parent: Vec<usize>,
 }

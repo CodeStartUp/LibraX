@@ -5,15 +5,15 @@ use librax_mitre::Progression;
 use librax_types::{EntityKind, Exposure, Incident};
 use serde::Serialize;
 
-/// The epistemic status of a statement, which the UI renders distinctly.
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Assertion {
-    /// Established by cited evidence.
+
     Fact,
-    /// A reasonable reading of the facts, which could be wrong.
+
     Inference,
-    /// Not established either way.
+
     Unknown,
 }
 
@@ -32,7 +32,7 @@ pub struct Statement {
     pub assertion: Assertion,
     pub label: String,
     pub text: String,
-    /// Events that establish this. Required for a fact, empty otherwise.
+
     pub evidence_event_ids: Vec<String>,
 }
 
@@ -68,7 +68,7 @@ impl Statement {
 #[derive(Debug, Clone, Serialize)]
 pub struct Briefing {
     pub incident_id: String,
-    /// Names the producer so the UI never implies a model wrote this.
+
     pub generator: String,
     pub summary: Vec<Statement>,
     pub risk_explanation: Vec<Statement>,
@@ -94,9 +94,9 @@ pub struct BriefingInput<'a> {
     pub incident: &'a Incident,
     pub graph: &'a AttackGraph,
     pub progression: &'a Progression,
-    /// Why correlation grouped the signals.
+
     pub correlation_reasons: &'a [String],
-    /// Names of playbooks that apply.
+
     pub playbooks: &'a [&'static str],
 }
 
@@ -106,8 +106,7 @@ pub trait AnalystEngine {
     fn brief(&self, input: &BriefingInput<'_>) -> Briefing;
 }
 
-/// Rule-based briefing generator. No model, no network call, same input gives
-/// the same output every time.
+
 pub struct DeterministicAnalyst;
 
 impl AnalystEngine for DeterministicAnalyst {
@@ -169,7 +168,7 @@ fn summary(input: &BriefingInput<'_>) -> Vec<Statement> {
         all_evidence(incident),
     ));
 
-    // The cast, straight from confirmed graph nodes.
+
     let users = named(input.graph, EntityKind::User);
     let accounts = named(input.graph, EntityKind::Account);
     let hosts = named(input.graph, EntityKind::Host);
@@ -211,7 +210,7 @@ fn summary(input: &BriefingInput<'_>) -> Vec<Statement> {
         ));
     }
 
-    // The one interpretive claim, clearly marked as such.
+
     if input.progression.observed_stages >= 4 {
         out.push(Statement::inference(
             "The ordering and shared entities are consistent with one operator progressing \
@@ -237,7 +236,7 @@ fn risk_explanation(input: &BriefingInput<'_>) -> Vec<Statement> {
         Vec::new(),
     )];
 
-    // Largest contributors first: what actually drove the number.
+
     let mut contributions = risk.contributions.clone();
     contributions.sort_by(|a, b| {
         b.points
@@ -304,7 +303,7 @@ fn guidance(input: &BriefingInput<'_>) -> Vec<Statement> {
     let incident = input.incident;
     let mut out: Vec<Statement> = Vec::new();
 
-    // Guidance is derived from the specific gaps this incident recorded.
+
     for unknown in &incident.unknowns {
         let step = if unknown.contains("Exfiltration is unconfirmed") {
             Some(format!(

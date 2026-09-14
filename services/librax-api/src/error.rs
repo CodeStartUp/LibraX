@@ -3,12 +3,12 @@ use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use serde::Serialize;
 
-/// A single error shape for the whole API, so the frontend never has to guess.
+
 #[derive(Debug)]
 pub enum ApiError {
     NotFound(String),
     BadRequest(String),
-    /// A destructive action was requested without an approver.
+
     ApprovalRequired(String),
     Conflict(String),
 }

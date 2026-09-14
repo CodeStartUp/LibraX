@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-/// The kinds of thing LibraX tracks as a first-class node in the graph.
+
 #[derive(
     Debug, Default, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize,
 )]
@@ -26,7 +26,7 @@ pub enum EntityKind {
 }
 
 impl EntityKind {
-    /// Prefix used to build stable entity keys such as `user:alice.hr`.
+
     pub fn prefix(self) -> &'static str {
         match self {
             EntityKind::User => "user",
@@ -68,9 +68,7 @@ impl EntityKind {
     }
 }
 
-/// A resolved reference to something in the environment.
-///
-/// `id` is the stable correlation key; `name` is what an analyst reads.
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct EntityRef {
     pub kind: EntityKind,
@@ -110,7 +108,7 @@ impl EntityRef {
     }
 }
 
-/// Edge semantics in the evidence graph.
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum RelationType {
@@ -129,12 +127,12 @@ pub enum RelationType {
     Creates,
     Reaches,
     MemberOf,
-    /// Mail delivery from an external sender to a recipient.
+
     Delivers,
 }
 
 impl RelationType {
-    /// Uppercase label drawn on the graph edge.
+
     pub fn label(self) -> &'static str {
         match self {
             RelationType::Uses => "USES",
@@ -157,8 +155,7 @@ impl RelationType {
     }
 }
 
-/// An evidence-backed edge. `evidence_event_ids` is mandatory in spirit: an
-/// analyst clicking this edge must be able to see the events that justify it.
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Relationship {
     pub from: EntityRef,

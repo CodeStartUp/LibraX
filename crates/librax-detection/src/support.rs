@@ -1,10 +1,6 @@
 use librax_types::{CanonicalEvent, EntityRef, MitreTechniqueRef, SecuritySignal, Severity};
 
-/// Assembles a signal with a stable, derivable id.
-///
-/// Deriving the id from `detector_id` + primary event means the same behaviour
-/// seen twice produces the same signal, so overlapping detection windows are
-/// idempotent rather than a source of duplicate incidents.
+
 #[allow(clippy::too_many_arguments)]
 pub fn signal(
     detector_id: &'static str,
@@ -31,7 +27,7 @@ pub fn signal(
     }
 }
 
-/// Every entity an event names, plus its network endpoints as IP entities.
+
 pub fn entities_of(event: &CanonicalEvent) -> Vec<EntityRef> {
     let mut entities = event.entities();
 
@@ -68,7 +64,7 @@ pub fn attr_str<'a>(event: &'a CanonicalEvent, key: &str) -> Option<&'a str> {
     event.attribute_str(key)
 }
 
-/// Ratio of `value` to `baseline`, guarding against a zero baseline.
+
 pub fn ratio(value: f64, baseline: f64) -> f64 {
     if baseline <= 0.0 {
         if value > 0.0 { f64::INFINITY } else { 0.0 }

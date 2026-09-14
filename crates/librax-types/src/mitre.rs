@@ -1,7 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-/// ATT&CK Enterprise tactics, ordered by their position in the kill chain so
-/// attack progression can be measured rather than guessed.
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Tactic {
@@ -22,7 +21,7 @@ pub enum Tactic {
 }
 
 impl Tactic {
-    /// ATT&CK tactic identifier.
+
     pub fn id(self) -> &'static str {
         match self {
             Tactic::Reconnaissance => "TA0043",
@@ -61,7 +60,7 @@ impl Tactic {
         }
     }
 
-    /// Kill-chain position, used to score how far an intrusion has progressed.
+
     pub fn stage_order(self) -> u8 {
         match self {
             Tactic::Reconnaissance => 0,
@@ -81,7 +80,7 @@ impl Tactic {
         }
     }
 
-    /// The stages shown in the UI attack-chain ribbon.
+
     pub fn chain() -> &'static [Tactic] {
         &[
             Tactic::InitialAccess,
@@ -96,20 +95,20 @@ impl Tactic {
     }
 }
 
-/// A technique attribution backed by observed behaviour, never by keyword match.
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct MitreTechniqueRef {
-    /// e.g. `T1059.001`.
+
     pub technique_id: String,
     pub name: String,
     pub tactic: Tactic,
     pub confidence: f32,
-    /// The behaviour that justified this mapping.
+
     pub rationale: String,
 }
 
 impl MitreTechniqueRef {
-    /// Parent technique for a sub-technique, e.g. `T1059.001` -> `T1059`.
+
     pub fn parent_id(&self) -> &str {
         match self.technique_id.split_once('.') {
             Some((parent, _)) => parent,

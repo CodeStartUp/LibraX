@@ -1,9 +1,4 @@
-//! Indicator lookups and the observed-file explorer.
-//!
-//! Two questions an analyst asks constantly: is this hash known bad, and is this
-//! address known bad. The answer separates the feed's opinion from what this
-//! estate actually saw, because "reported malicious" and "present here" are
-//! different findings and only the second one needs containment.
+
 
 use axum::Json;
 use axum::extract::{Path, Query, State};
@@ -15,7 +10,7 @@ use std::collections::BTreeMap;
 use crate::error::ApiError;
 use crate::state::SharedState;
 
-/// Host and user names listed inline per file before falling back to a count.
+
 const HOST_SAMPLE: usize = 12;
 
 #[derive(Serialize)]
@@ -27,13 +22,13 @@ pub struct FeedResponse {
     pub indicators: Vec<IocRecord>,
 }
 
-/// The whole feed, so the analyst can see what the system does and does not know.
+
 pub async fn feed(State(state): State<SharedState>) -> Json<FeedResponse> {
     let intel = state.intel();
 
     let mut indicators: Vec<IocRecord> = intel.all().cloned().collect();
     indicators.sort_by(|a, b| {
-        // Bad first, then by type, then by value: stable and useful to scan.
+
         let rank = |v: IocVerdict| match v {
             IocVerdict::Malicious => 0,
             IocVerdict::Suspicious => 1,
@@ -63,7 +58,7 @@ pub struct LookupQuery {
     pub value: String,
 }
 
-/// Where an indicator turned up in this estate.
+
 #[derive(Serialize)]
 pub struct Sighting {
     pub event_id: String,
@@ -73,7 +68,7 @@ pub struct Sighting {
     pub host: Option<String>,
     pub user: Option<String>,
     pub activity: String,
-    /// Which part of the event matched: process hash, destination address, and so on.
+
     pub matched_field: String,
     pub message: String,
 }
@@ -84,7 +79,7 @@ pub struct LookupResponse {
     pub kind: Option<IocKind>,
     pub kind_label: String,
     pub record: IocRecord,
-    /// True when this estate has actually seen it, as opposed to a feed opinion.
+
     pub observed_here: bool,
     pub sighting_count: usize,
     pub sightings: Vec<Sighting>,
@@ -99,7 +94,7 @@ pub async fn lookup(
     lookup_value(state, query.value).await
 }
 
-/// Same lookup, addressable by path so an indicator can be linked to.
+
 pub async fn lookup_path(
     State(state): State<SharedState>,
     Path(value): Path<String>,
@@ -144,8 +139,8 @@ async fn lookup_value(state: SharedState, value: String) -> Result<Json<LookupRe
             .incidents
             .iter()
             .filter(|built| {
-                // `incident.signals` holds signal ids, so the evidence has to be
-                // read back off the signals themselves.
+
+
                 built.incident.signals.iter().any(|signal_id| {
                     soc.signals.iter().any(|s| {
                         &s.signal_id == signal_id
@@ -175,14 +170,14 @@ async fn lookup_value(state: SharedState, value: String) -> Result<Json<LookupRe
         record,
         observed_here,
         sighting_count: sightings.len(),
-        // Enough to establish the pattern without paging the whole window.
+
         sightings: sightings.into_iter().rev().take(50).collect(),
         incident_ids,
         assessment,
     }))
 }
 
-/// A plain sentence combining the feed's opinion with local evidence.
+
 fn assess(
     record: &IocRecord,
     observed_here: bool,
@@ -229,7 +224,7 @@ fn assess(
     format!("{verdict}. {where_seen}{action}")
 }
 
-/// Which field of an event carries the indicator, if any.
+
 fn matched_field(event: &CanonicalEvent, needle: &str) -> Option<String> {
     let eq = |value: Option<&str>| value.is_some_and(|v| v.eq_ignore_ascii_case(needle));
 
@@ -254,8 +249,7 @@ fn matched_field(event: &CanonicalEvent, needle: &str) -> Option<String> {
         }
     }
 
-    // Everything else the source reported, so attachment hashes and sender
-    // domains are searchable without the canonical model needing a field per vendor.
+
     for (key, value) in &event.attributes {
         if value
             .as_str()
@@ -270,17 +264,17 @@ fn matched_field(event: &CanonicalEvent, needle: &str) -> Option<String> {
 
 #[derive(Deserialize)]
 pub struct FileQuery {
-    /// Substring match on the file name.
+
     pub name: Option<String>,
-    /// `malicious`, `suspicious`, `clean` or `unknown`.
+
     pub verdict: Option<String>,
     pub host: Option<String>,
-    /// Only files whose feed verdict is malicious or suspicious.
+
     pub bad_only: Option<bool>,
     pub limit: Option<usize>,
 }
 
-/// A file an event described, whatever shape the source reported it in.
+
 struct Artifact {
     name: String,
     sha256: Option<String>,
@@ -290,8 +284,7 @@ struct Artifact {
     command_line: Option<String>,
 }
 
-/// The file an event is about: the process it ran, the attachment it delivered,
-/// or the file it wrote.
+
 fn artifact_of(event: &CanonicalEvent) -> Option<Artifact> {
     if let Some(process) = &event.process {
         return Some(Artifact {
@@ -304,8 +297,7 @@ fn artifact_of(event: &CanonicalEvent) -> Option<Artifact> {
         });
     }
 
-    // Attachment first: on a mail event the file that matters is the one delivered,
-    // and its hash is the one an analyst pastes into a lookup.
+
     if let Some(name) = event.attribute_str("attachment_name") {
         return Some(Artifact {
             name: name.to_string(),
@@ -337,7 +329,7 @@ fn artifact_of(event: &CanonicalEvent) -> Option<Artifact> {
     None
 }
 
-/// A distinct binary or file observed in the estate.
+
 #[derive(Serialize)]
 pub struct FileView {
     pub name: String,
@@ -350,7 +342,7 @@ pub struct FileView {
     pub detection_ratio: Option<String>,
     pub signed: Option<bool>,
     pub signer: Option<String>,
-    /// Distinct hosts the file was seen on, and a sample of their names.
+
     pub host_count: usize,
     pub hosts: Vec<String>,
     pub user_count: usize,
@@ -360,7 +352,7 @@ pub struct FileView {
     pub last_seen: chrono::DateTime<chrono::Utc>,
     pub command_lines: Vec<String>,
     pub event_ids: Vec<String>,
-    /// Set when a clean or unknown file is nonetheless part of an incident.
+
     pub notes: Vec<String>,
 }
 
@@ -373,7 +365,7 @@ pub struct FilesResponse {
     pub files: Vec<FileView>,
 }
 
-/// Files and processes observed, with the feed's verdict attached.
+
 pub async fn files(
     State(state): State<SharedState>,
     Query(query): Query<FileQuery>,
@@ -384,9 +376,8 @@ pub async fn files(
 
     state.read(|soc| {
         for event in &soc.events {
-            // A process is a file, but so is the attachment that started the
-            // intrusion and the archive it left behind. Listing only processes hides
-            // the two artifacts an analyst most wants to check a hash against.
+
+
             let Some(artifact) = artifact_of(event) else {
                 continue;
             };
@@ -399,8 +390,7 @@ pub async fn files(
                 command_line,
             } = artifact;
 
-            // Keyed on hash where available so the same binary under two names
-            // collapses into one row, and on name otherwise.
+
             let key = sha256
                 .clone()
                 .or_else(|| md5.clone())
@@ -448,9 +438,7 @@ pub async fn files(
             entry.first_seen = entry.first_seen.min(event.timestamp);
             entry.last_seen = entry.last_seen.max(event.timestamp);
 
-            // A fleet-wide binary runs on thousands of machines. The row reports how
-            // many, and lists a sample: the full list is a pivot into event search,
-            // not something to inline into every response.
+
             if let Some(host) = event.host_name() {
                 if !entry.hosts.iter().any(|h| h == host) {
                     entry.host_count += 1;
@@ -503,7 +491,7 @@ pub async fn files(
         files.retain(|f| f.verdict.is_bad());
     }
 
-    // Worst and busiest first.
+
     files.sort_by(|a, b| {
         let rank = |v: IocVerdict| match v {
             IocVerdict::Malicious => 0,

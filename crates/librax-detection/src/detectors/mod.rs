@@ -1,10 +1,7 @@
-//! The detector catalogue.
-//!
-//! Detectors are grouped by the telemetry domain they reason about, not by the
-//! vendor that produced the events, because by this point every event looks the
-//! same.
+
 
 pub mod data;
+pub mod directory;
 pub mod email;
 pub mod endpoint;
 pub mod identity;
@@ -12,7 +9,7 @@ pub mod network;
 
 use crate::engine::Detector;
 
-/// Every detector the engine runs, in rough kill-chain order.
+
 pub fn all() -> Vec<Box<dyn Detector>> {
     vec![
         Box::new(email::PhishingDetector),
@@ -28,5 +25,11 @@ pub fn all() -> Vec<Box<dyn Detector>> {
         Box::new(endpoint::RansomwareDetector),
         Box::new(network::VolumetricDetector),
         Box::new(network::BlockedOutboundDetector),
+
+
+        Box::new(directory::DirectorySprayDetector),
+        Box::new(directory::KerberosAbuseDetector),
+        Box::new(directory::SmbEnumerationDetector),
+        Box::new(directory::DcSyncDetector),
     ]
 }

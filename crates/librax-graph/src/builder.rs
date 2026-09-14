@@ -6,7 +6,7 @@ use librax_types::{CanonicalEvent, EntityKind, EntityRef, Exposure, RelationType
 
 use crate::graph::{AttackGraph, GraphEdge, GraphNode};
 
-/// One derived relationship, before merging.
+
 struct Derived {
     from: EntityRef,
     relation: RelationType,
@@ -23,25 +23,22 @@ fn edge(from: EntityRef, relation: RelationType, to: EntityRef, confidence: f32)
     }
 }
 
-/// Builds the graph for a set of events.
-///
-/// Callers pass the events an incident actually cites, so the result is that
-/// incident's graph rather than a picture of the whole estate.
+
 pub fn build(
     events: &[CanonicalEvent],
     signals: &[SecuritySignal],
     resolver: &EntityResolver,
     inventory: &Inventory,
 ) -> AttackGraph {
-    // Entities named by a detection are confirmed; everything else the graph
-    // touches is only adjacent to the intrusion.
+
+
     let confirmed: HashSet<String> = signals
         .iter()
         .flat_map(|s| resolver.resolve_signal(s))
         .map(|e| e.id)
         .collect();
 
-    // Which detections cited which event.
+
     let mut signals_by_event: HashMap<&str, Vec<String>> = HashMap::new();
     for signal in signals {
         for event_id in &signal.evidence_event_ids {
@@ -98,10 +95,7 @@ pub fn build(
         }
     }
 
-    // A detection can name an entity without establishing any relationship to
-    // another one; a volumetric attack on a single gateway is the clearest case.
-    // Those entities still belong in the graph, otherwise the asset the detection
-    // was actually about is invisible to blast radius and impact scoring.
+
     for signal in signals {
         let anchor = signal
             .evidence_event_ids
@@ -145,8 +139,7 @@ fn touch_node(
     let id = entity.id.clone();
     let asset = inventory.asset_by_name(&entity.name);
 
-    // Anything the inventory cannot place, and that resolution left as a bare
-    // address or domain, is outside the estate.
+
     let external = asset.is_none() && matches!(entity.kind, EntityKind::Ip | EntityKind::Domain);
 
     let node = nodes.entry(id.clone()).or_insert_with(|| GraphNode {
@@ -161,10 +154,8 @@ fn touch_node(
         },
         criticality: asset.map(|a| a.criticality),
         hospital: asset.map(|a| a.hospital.clone()).or_else(|| {
-            // Internal entities the inventory does not list, such as a process,
-            // sit at the site that observed them. External infrastructure sits
-            // at no site: inheriting the observing host's campus would attribute
-            // the attacker's server to a hospital.
+
+
             if external {
                 None
             } else {
@@ -185,7 +176,7 @@ fn touch_node(
     id
 }
 
-/// Relationships implied by a single event.
+
 fn derive(event: &CanonicalEvent, resolver: &EntityResolver) -> Vec<Derived> {
     let mut out: Vec<Derived> = Vec::new();
 
@@ -205,7 +196,7 @@ fn derive(event: &CanonicalEvent, resolver: &EntityResolver) -> Vec<Derived> {
         .map(|d| EntityRef::new(EntityKind::Domain, d));
 
     match event.activity.as_str() {
-        // Mail arriving from outside, addressed to a named person.
+
         "mail_delivered" => {
             if let (Some(sender), Some(recipient)) = (domain.as_ref(), principal.as_ref()) {
                 out.push(edge(
@@ -217,7 +208,7 @@ fn derive(event: &CanonicalEvent, resolver: &EntityResolver) -> Vec<Derived> {
             }
         }
 
-        // A remote client authenticating in and being handed an internal address.
+
         "vpn_session_start" => {
             if let (Some(user), Some(assigned)) = (principal.as_ref(), dst.as_ref()) {
                 out.push(edge(
@@ -237,7 +228,7 @@ fn derive(event: &CanonicalEvent, resolver: &EntityResolver) -> Vec<Derived> {
             }
         }
 
-        // A workstation reaching into a server over a remote-execution service.
+
         "remote_logon" => {
             if let (Some(source), Some(server)) = (src.as_ref(), host.as_ref()) {
                 out.push(edge(
@@ -333,7 +324,7 @@ fn derive(event: &CanonicalEvent, resolver: &EntityResolver) -> Vec<Derived> {
         _ => {}
     }
 
-    // Relationships that hold regardless of what the event was about.
+
     if let (Some(user), Some(machine)) = (principal.as_ref(), host.as_ref())
         && event.activity != "remote_logon"
         && event.activity != "pam_session_checkout"
@@ -356,7 +347,7 @@ fn derive(event: &CanonicalEvent, resolver: &EntityResolver) -> Vec<Derived> {
         ));
     }
 
-    // Outbound conversations, from whichever end we can identify.
+
     if event.activity == "connection_allowed" || event.activity == "connection_denied" {
         if let (Some(source), Some(destination)) = (src.as_ref(), dst.as_ref()) {
             out.push(edge(

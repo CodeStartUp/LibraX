@@ -1,4 +1,4 @@
-//! The LibraX API service.
+
 
 use std::sync::Arc;
 
@@ -42,12 +42,10 @@ async fn main() {
 
     if demo_mode {
         seed_background(&state);
-    }
 
-    // Telemetry keeps arriving for as long as the service runs, so source health,
-    // event rates and blind-spot detection reflect a live stream rather than one
-    // batch frozen at startup.
-    tokio::spawn(background_telemetry(Arc::clone(&state)));
+
+        tokio::spawn(background_telemetry(Arc::clone(&state)));
+    }
 
     let listener = tokio::net::TcpListener::bind(bind_addr)
         .await
@@ -60,20 +58,14 @@ async fn main() {
         .expect("server error");
 }
 
-/// Fills the retained window with ordinary hospital traffic.
-///
-/// No attack is seeded. The console opens on a quiet estate with live sources and
-/// an empty incident queue, and the analyst launches attacks from the console --
-/// watching correlation happen is the demonstration, and it does not work if the
-/// incident is already sitting there when the page loads.
+
 fn seed_background(state: &Arc<AppState>) {
     use chrono::{Duration, Utc};
     use librax_connectors::synthetic::TelemetryGenerator;
 
     let mut generator = TelemetryGenerator::new(state.inventory_handle(), state.config.seed);
 
-    // Anchored in the recent past, so the console shows the shift so far rather
-    // than events dated in the future.
+
     let noise = generator.noise_batch(
         state.config.demo_noise_events,
         Utc::now() - Duration::minutes(45),
@@ -88,14 +80,10 @@ fn seed_background(state: &Arc<AppState>) {
     );
 }
 
-/// Interval between background telemetry batches.
+
 const TELEMETRY_INTERVAL_SECS: u64 = 10;
 
-/// Ordinary traffic, forever.
-///
-/// Without this the event rates on the source-health page decay to zero and every
-/// source eventually reports a blind spot, which would be a lie about a system
-/// that is running perfectly well.
+
 async fn background_telemetry(state: Arc<AppState>) {
     use librax_connectors::synthetic::TelemetryGenerator;
 

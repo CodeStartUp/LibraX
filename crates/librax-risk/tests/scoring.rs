@@ -1,8 +1,4 @@
-//! Risk and blast radius over the real pipeline output.
-//!
-//! These tests deliberately assert *ranges and relationships* rather than exact
-//! numbers. The demo target is roughly 94 / 99 / 97, but pinning the assertions
-//! to those figures would just be hardcoding them one layer down.
+
 
 use std::sync::Arc;
 
@@ -153,8 +149,7 @@ fn the_breakdown_accounts_for_the_score() {
 fn threat_confidence_and_business_impact_move_independently() {
     let assessed = intrusion();
 
-    // The patient database drives impact far above what detection strength alone
-    // would justify; if these were the same number the separation is fake.
+
     assert!(
         (assessed.risk.business_impact - assessed.risk.threat_confidence).abs() > 1.0,
         "impact {:.1} and confidence {:.1} are suspiciously identical",
@@ -167,7 +162,7 @@ fn threat_confidence_and_business_impact_move_independently() {
 fn a_lone_low_grade_signal_is_not_a_crisis() {
     let assessed = intrusion();
 
-    // Same machinery, one weak signal and nothing else.
+
     let single = vec![assessed.signals[0].clone()];
     let risk = assess_risk(&RiskInputs {
         signals: &single,
@@ -286,7 +281,7 @@ fn the_patient_database_is_the_impact_driver() {
     );
     assert!(driver.points > 40.0);
 
-    // And the inventory agrees it is that critical.
+
     let asset = assessed
         .inventory
         .asset_by_name(demo::PATIENT_DB)

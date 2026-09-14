@@ -1,0 +1,143 @@
+# LibraX live Active Directory attack lab.
+#
+#   docker compose -f lab/docker-compose.yml up --build
+#
+# Brings up a real Samba AD domain controller, a log shipper, an attacker box,
+# and LibraX itself in REAL mode (no simulated demo data). The attacker runs a
+# staged, real attack against the DC; the DC's genuine audit logs flow into
+# LibraX; and the correlated incident appears in the dashboard at
+# http://localhost:3000.
+#
+# This is a self-contained private network. Nothing here touches anything you do
+# not own, and no destructive action is taken against any real system.
+name: librax-lab
+
+services:
+  # ---- LibraX, in real mode ------------------------------------------------
+  api:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    environment:
+      SERVICE: librax-api
+      LIBRAX_BIND_ADDR: 0.0.0.0:8080
+      # The console starts EMPTY. Every incident it shows came from the lab.
+      LIBRAX_DEMO_MODE: "false"
+      LIBRAX_INCIDENT_START: "1"
+      RUST_LOG: ${RUST_LOG:-info,librax=debug}
+    ports:
+      - "${API_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/api/v1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+    networks: [labnet]
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8080}
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    networks: [labnet]
+    restart: unless-stopped
+
+  # ---- Real Active Directory domain controller -----------------------------
+  dc:
+    build:
+      context: ./dc
+      dockerfile: Dockerfile
+    hostname: dc01
+    environment:
+      REALM: LIBRAX.LOCAL
+      DOMAIN: LIBRAX
+      ADMIN_PASS: ${ADMIN_PASS:-LibraX-Admin-2026!}
+      VICTIM_PASS: ${VICTIM_PASS:-Winter2026!}
+      SHARED_PASS: ${SHARED_PASS:-Autumn-2025-Placeholder!}
+      SVC_PASS: ${SVC_PASS:-Sup3rSecret-Svc-2025!}
+    # Samba AD DC manages its own services and needs to set its hostname.
+    cap_add:
+      - SYS_ADMIN
+      - NET_ADMIN
+    volumes:
+      - samba-private:/var/lib/samba
+      - samba-etc:/etc/samba
+      - samba-logs:/var/log/samba
+    healthcheck:
+      test: ["CMD-SHELL", "ss -ltn | grep -q ':445' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 60s
+    networks:
+      labnet:
+        ipv4_address: 172.30.0.10
+    restart: unless-stopped
+
+  # ---- Turns the DC's JSON audit logs into LibraX raw events ---------------
+  shipper:
+    build:
+      context: ./shipper
+      dockerfile: Dockerfile
+    environment:
+      LIBRAX_API_URL: http://api:8080
+      SAMBA_LOG_DIR: /var/log/samba
+      SOURCE_ID: dc-samba-01
+    volumes:
+      - samba-logs:/var/log/samba:ro
+    depends_on:
+      api:
+        condition: service_healthy
+      dc:
+        condition: service_started
+    networks: [labnet]
+    restart: unless-stopped
+
+  # ---- Real offensive tooling, run against the DC --------------------------
+  attacker:
+    build:
+      context: ./attacker
+      dockerfile: Dockerfile
+    environment:
+      REALM: LIBRAX.LOCAL
+      DOMAIN: LIBRAX
+      DC_HOST: dc01
+      DC_FQDN: dc01.librax.local
+      DC_IP: 172.30.0.10
+      VICTIM: victim
+      VICTIM_PASS: ${VICTIM_PASS:-Winter2026!}
+      ADMIN_PASS: ${ADMIN_PASS:-LibraX-Admin-2026!}
+      SHARED_PASS: ${SHARED_PASS:-Autumn-2025-Placeholder!}
+      SVC_PASS: ${SVC_PASS:-Sup3rSecret-Svc-2025!}
+      # Set to "true" to run the campaign on a loop instead of once.
+      REPEAT: ${ATTACK_REPEAT:-false}
+      PHASE_GAP: ${ATTACK_PHASE_GAP:-15}
+    depends_on:
+      dc:
+        condition: service_healthy
+      shipper:
+        condition: service_started
+    networks:
+      labnet:
+        ipv4_address: 172.30.0.66
+    restart: "no"
+
+networks:
+  labnet:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
+
+volumes:
+  samba-private:
+  samba-etc:
+  samba-logs:

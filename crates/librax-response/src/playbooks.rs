@@ -1,20 +1,19 @@
 use librax_graph::AttackGraph;
 use librax_types::{EntityKind, EntityRef, Incident, ResponseAction, ResponseActionKind, Severity};
 
-/// A named containment plan and the conditions under which it applies.
+
 pub trait Playbook: Send + Sync {
     fn id(&self) -> &'static str;
 
     fn name(&self) -> &'static str;
 
-    /// Whether this playbook has anything to say about the incident.
+
     fn applies(&self, incident: &Incident) -> bool;
 
     fn actions(&self, incident: &Incident, graph: &AttackGraph) -> Vec<ResponseAction>;
 }
 
-/// Confirmed entities of a given kind, since containment should only ever target
-/// something the evidence actually implicates.
+
 fn confirmed<'a>(
     graph: &'a AttackGraph,
     kinds: &'a [EntityKind],
@@ -244,7 +243,7 @@ impl Playbook for RansomwareContainment {
     }
 }
 
-/// Always applicable: the non-destructive baseline.
+
 pub struct StandardTriage;
 
 impl Playbook for StandardTriage {

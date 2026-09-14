@@ -7,12 +7,11 @@ use librax_types::{
 };
 use serde::Serialize;
 
-/// An entity as LibraX has come to understand it, with every name it has been
-/// seen under.
+
 #[derive(Debug, Clone, Serialize)]
 pub struct ResolvedEntity {
     pub entity: EntityRef,
-    /// Other identifiers that resolve here, e.g. `ip:10.10.2.15`.
+
     pub aliases: Vec<String>,
     pub first_seen: DateTime<Utc>,
     pub last_seen: DateTime<Utc>,
@@ -21,25 +20,24 @@ pub struct ResolvedEntity {
     pub criticality: Option<u8>,
 }
 
-/// Maps observed identifiers onto canonical entities.
+
 pub struct EntityResolver {
-    /// alias key -> canonical entity id
+
     aliases: HashMap<String, String>,
     entities: HashMap<String, ResolvedEntity>,
-    /// Address-to-asset bindings, retained as evidence-free structural facts.
+
     ip_bindings: Vec<(String, EntityRef)>,
-    /// Asset name -> the inventory's canonical form. Sources disagree about kind:
-    /// an EDR agent calls `DB-SRV-02` a host, PAM calls it a server. Without this
-    /// they would be two nodes and the attack path would break in the middle.
+
+
     by_asset_name: HashMap<String, EntityRef>,
-    /// Identity name -> canonical form, for the same reason: `svc.dbadmin` shows
-    /// up as a user in directory logs and as an account in the credential vault.
+
+
     by_identity_name: HashMap<String, EntityRef>,
 }
 
 impl EntityResolver {
-    /// Seeds resolution from the asset inventory, which is where the authoritative
-    /// address-to-host bindings live.
+
+
     pub fn from_inventory(inventory: &Inventory) -> Self {
         let mut resolver = Self {
             aliases: HashMap::new(),
@@ -62,8 +60,7 @@ impl EntityResolver {
                 .by_asset_name
                 .insert(asset.entity.name.to_lowercase(), asset.entity.clone());
 
-            // Workstations and servers own their address; a database shares the
-            // host's address, so binding it would make two entities collide.
+
             if asset.role != AssetRole::Database {
                 resolver
                     .aliases
@@ -79,10 +76,7 @@ impl EntityResolver {
         resolver
     }
 
-    /// Canonical form of an observed reference.
-    ///
-    /// Falls back to the input untouched when nothing in the inventory matches,
-    /// which keeps unknown infrastructure visible instead of mislabelled.
+
     pub fn resolve(&self, entity: &EntityRef) -> EntityRef {
         match entity.kind {
             EntityKind::User | EntityKind::Account => {
@@ -131,7 +125,7 @@ impl EntityResolver {
         resolved
     }
 
-    /// Records what an event tells us about the entities it names.
+
     pub fn observe(&mut self, events: &[CanonicalEvent]) {
         for event in events {
             let named = event.entities();
@@ -139,8 +133,7 @@ impl EntityResolver {
                 self.touch(entity, event);
             }
 
-            // Bind the host to the address it was seen using, but only where the
-            // host is reporting its *own* address.
+
             if host_owns_source_address(event)
                 && let (Some(host), Some(ip)) = (event.host.as_ref(), event.src_ip())
             {
@@ -181,7 +174,7 @@ impl EntityResolver {
         }
     }
 
-    /// Canonical entities for a signal, so correlation compares like with like.
+
     pub fn resolve_signal(&self, signal: &SecuritySignal) -> Vec<EntityRef> {
         self.resolve_all(&signal.entities)
     }
@@ -198,10 +191,7 @@ impl EntityResolver {
         self.entities.is_empty()
     }
 
-    /// Structural `HAS_IP` edges for every address binding we observed.
-    ///
-    /// These carry no evidence event ids because they are inventory facts, not
-    /// inferences drawn from telemetry.
+
     pub fn address_relationships(&self, at: DateTime<Utc>) -> Vec<Relationship> {
         self.entities
             .values()
@@ -228,11 +218,7 @@ impl EntityResolver {
     }
 }
 
-/// Whether this event's source address describes the same machine as its host.
-///
-/// Directory and endpoint-agent records pair a hostname with that host's own
-/// address. A server-side remote logon does not: there `src_ip` is the *client*,
-/// so binding it would fuse the client and the server into one entity.
+
 fn host_owns_source_address(event: &CanonicalEvent) -> bool {
     use librax_types::SourceType;
 
@@ -306,7 +292,7 @@ mod tests {
         let events = chain_events();
         resolver.observe(&events);
 
-        // The firewall named an address, the EDR named a hostname: same machine.
+
         let from_firewall = resolver.resolve(&EntityRef::ip(demo::ENDPOINT_IP));
         let from_edr = resolver.resolve(&EntityRef::host(demo::ENDPOINT));
         assert_eq!(from_firewall.id, from_edr.id);
@@ -319,7 +305,7 @@ mod tests {
     fn the_same_machine_named_by_two_sources_is_one_entity() {
         let resolver = EntityResolver::from_inventory(&inventory());
 
-        // EDR calls it a host, PAM calls it a server.
+
         let from_edr = resolver.resolve(&EntityRef::host(demo::DB_SERVER));
         let from_pam = resolver.resolve(&EntityRef::server(demo::DB_SERVER));
         assert_eq!(from_edr.id, from_pam.id);
@@ -329,7 +315,7 @@ mod tests {
     fn the_same_identity_named_by_two_sources_is_one_entity() {
         let resolver = EntityResolver::from_inventory(&inventory());
 
-        // Directory logs report a user name; the vault reports an account.
+
         let from_directory = resolver.resolve(&EntityRef::user(demo::PRIVILEGED_ACCOUNT));
         let from_vault = resolver.resolve(&EntityRef::new(
             EntityKind::Account,

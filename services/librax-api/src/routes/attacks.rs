@@ -1,10 +1,4 @@
-//! Launching attacks against the synthetic estate.
-//!
-//! The analyst picks a playbook and watches it arrive. Events are delivered on a
-//! timer at the playbook's own tempo (optionally accelerated), each stamped with
-//! the moment it was delivered, so the incident builds up in front of them
-//! instead of appearing fully formed. That is the difference between a demo and
-//! a console.
+
 
 use std::sync::Arc;
 
@@ -19,13 +13,10 @@ use crate::error::ApiError;
 use crate::runs::{AttackRun, RunStatus};
 use crate::state::SharedState;
 
-/// Default playback multiplier.
-///
-/// A 31-minute intrusion at 20x arrives over about 90 seconds: long enough to
-/// watch the graph grow, short enough that nobody is waiting.
+
 const DEFAULT_SPEED: f64 = 20.0;
 
-/// Longest we will sleep between two events, whatever the speed asks for.
+
 const MAX_STEP_SECONDS: f64 = 45.0;
 
 #[derive(Serialize)]
@@ -48,11 +39,11 @@ pub async fn catalog(State(state): State<SharedState>) -> Json<CatalogResponse> 
 #[derive(Deserialize)]
 pub struct LaunchRequest {
     pub attack_id: String,
-    /// Playback multiplier; `0` delivers the whole attack immediately.
+
     #[serde(default)]
     pub speed: Option<f64>,
-    /// Which campus to play it against. Rotates by default so repeated launches
-    /// do not all land on the same site.
+
+
     #[serde(default)]
     pub campus_index: Option<usize>,
 }
@@ -82,9 +73,8 @@ pub async fn launch(
     let campus_index = request
         .campus_index
         .unwrap_or_else(|| attacks::rotate_campus(&inventory, run_index));
-    // A run-specific tag keeps a relaunch distinct from the first run instead of
-    // being discarded as duplicate events. The first play of the documented chain
-    // keeps the documented ids so INC-0042 is reproducible.
+
+
     let tag = if request.attack_id == "multi_stage_ransomware" && run_index == 0 {
         "EVT".to_string()
     } else {
@@ -111,8 +101,8 @@ pub async fn launch(
         attack_id: kind.id.clone(),
         name: kind.name.clone(),
         category: kind.category.clone(),
-        // The documented chain is pinned to the documented site whatever campus was
-        // requested, so the run record must not claim otherwise.
+
+
         campus: if request.attack_id == "multi_stage_ransomware" {
             librax_enrichment::demo::HOSPITAL.to_string()
         } else {
@@ -152,7 +142,7 @@ pub async fn launch(
     Ok(Json(LaunchResponse { run, message }))
 }
 
-/// Delivers every event in one batch.
+
 fn deliver_all(state: &SharedState, run_id: &str, mut events: Vec<RawEvent>) {
     let now = Utc::now();
     for event in &mut events {
@@ -174,13 +164,13 @@ fn deliver_all(state: &SharedState, run_id: &str, mut events: Vec<RawEvent>) {
     );
 }
 
-/// Delivers events on a timer, preserving the gaps between them.
+
 async fn play(state: SharedState, run_id: String, events: Vec<RawEvent>, speed: f64) {
     let mut previous = events[0].received_at;
 
     for (index, mut event) in events.into_iter().enumerate() {
-        // The gap the playbook asked for, divided by the requested speed and
-        // capped so an unhurried playbook cannot stall the console.
+
+
         let gap = (event.received_at - previous).num_milliseconds().max(0) as f64 / 1000.0;
         previous = event.received_at;
 
@@ -189,8 +179,7 @@ async fn play(state: SharedState, run_id: String, events: Vec<RawEvent>, speed: 
             tokio::time::sleep(std::time::Duration::from_secs_f64(wait)).await;
         }
 
-        // Stamped with the moment of delivery: the timeline should say when the
-        // SOC actually saw it, not when the script imagined it.
+
         let raw_id = event.raw_id.clone();
         event.received_at = Utc::now();
 
@@ -240,7 +229,7 @@ pub async fn runs(State(state): State<SharedState>) -> Json<RunsResponse> {
         Json(RunsResponse {
             total: soc.runs.len(),
             running,
-            // Newest first: the analyst cares about what just happened.
+
             runs: soc
                 .runs
                 .iter()
@@ -260,7 +249,7 @@ pub struct ResetResponse {
     pub message: String,
 }
 
-/// Clears observed telemetry so the analyst can start from an empty console.
+
 pub async fn reset(State(state): State<SharedState>) -> Json<ResetResponse> {
     state.clear_telemetry();
 

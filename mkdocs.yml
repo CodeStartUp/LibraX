@@ -1,0 +1,83 @@
+site_name: "LibraX — SOC & Autonomous Correlation Platform"
+site_description: "Comprehensive technical architecture, code analysis, detection algorithms, and Docker lab documentation for LibraX."
+site_author: "LibraX Engineering"
+site_url: "https://librax.security"
+
+theme:
+  name: material
+  language: en
+  palette:
+    - scheme: slate
+      primary: blue
+      accent: cyan
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+    - scheme: default
+      primary: blue
+      accent: cyan
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - navigation.expand
+    - search.highlight
+    - search.share
+    - content.code.copy
+    - content.code.annotate
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - attr_list
+  - md_in_html
+  - toc:
+      permalink: true
+
+nav:
+  - "Overview": index.md
+  - "Architecture":
+      - "System Architecture & Pipeline": architecture/overview.md
+      - "Rust Workspace & Crates Deep-Dive": architecture/crates.md
+  - "Telemetry & Ingestion":
+      - "Log Normalizer & Parsers": ingestion/normalizer.md
+      - "Threat Intel & Enrichment": ingestion/intel.md
+  - "Detection Engine":
+      - "Detectors & ATT&CK Alignment": detection/detectors.md
+      - "MITRE ATT&CK Enterprise Matrix": detection/mitre-matrix.md
+      - "Active Directory Heuristics": detection/ad-heuristics.md
+  - "Correlation & Graph":
+      - "Identity & Entity Resolution": correlation/entities.md
+      - "Evidence Graph & Attack Path": correlation/graph.md
+      - "Multi-Dimensional Risk Engine": correlation/risk.md
+  - "AI & Autonomous Response":
+      - "Analyst AI & Briefing Synthesis": ai/briefings.md
+      - "Response Engine & Simulation": response/containment.md
+  - "Lab & Docker Infrastructure":
+      - "Docker Network & Samba AD DC": lab/docker-architecture.md
+      - "Adversary Campaign & Shipper": lab/adversary-campaign.md
+  - "API & Frontend":
+      - "API Endpoints & Contracts": api/endpoints.md
+      - "Frontend SPA & HUD Architecture": frontend/ui-architecture.md
+  - "Operations & Runbook":
+      - "Getting Started & Verification": guides/getting-started.md

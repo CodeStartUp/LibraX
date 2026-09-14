@@ -1,5 +1,4 @@
-//! The briefing must be honest: facts cite evidence, guesses are labelled, and
-//! nothing is invented.
+
 
 use chrono::{Duration, Utc};
 use librax_ai::{AnalystEngine, Assertion, Briefing, BriefingInput, DeterministicAnalyst};
@@ -83,6 +82,7 @@ fn incident() -> Incident {
         },
         blast_radius: BlastRadius::default(),
         mitre_techniques: Vec::new(),
+        peak_signal_severity: Severity::Info,
         unknowns: vec![
             "Exfiltration is unconfirmed. An archive was staged, but no outbound transfer was \
              observed."
@@ -254,7 +254,7 @@ fn guidance_addresses_the_specific_gaps_recorded() {
     assert!(text.contains("blind spot"), "coverage gap: {text}");
     assert!(text.contains("alice.hr"), "user confirmation: {text}");
 
-    // Guidance is advice, not established fact.
+
     assert!(
         briefing
             .investigation_guidance

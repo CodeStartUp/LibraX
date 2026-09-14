@@ -3,12 +3,7 @@ use librax_types::{EventCategory, SecuritySignal, Severity, Tactic};
 use crate::engine::{DetectionContext, Detector};
 use crate::support::{attr_bool, attr_num, attr_str, entities_of, lower, signal};
 
-/// Office applications that hatch PowerShell, and PowerShell that hides what it
-/// is running.
-///
-/// Plain `powershell.exe` is a legitimate administration tool, so this detector
-/// insists on either an encoded command or an Office parent process before it
-/// says anything.
+
 pub struct PowerShellDetector;
 
 const PS_ID: &str = "powershell_encoded_command";
@@ -48,7 +43,7 @@ impl Detector for PowerShellDetector {
                 .any(|flag| cmdline.contains(flag));
             let office_parent = OFFICE_PARENTS.iter().any(|p| parent == *p);
 
-            // Neither condition present means this is ordinary administration.
+
             if !encoded && !office_parent {
                 return None;
             }
@@ -118,7 +113,7 @@ impl Detector for PowerShellDetector {
     }
 }
 
-/// Large archives assembled in temporary directories: collection before removal.
+
 pub struct DataStagingDetector;
 
 const STAGING_ID: &str = "data_staging";
@@ -205,7 +200,7 @@ impl Detector for DataStagingDetector {
     }
 }
 
-/// Recovery being disabled and files changing en masse: ransomware staging.
+
 pub struct RansomwareDetector;
 
 const RANSOM_ID: &str = "ransomware_indicator";
@@ -231,7 +226,7 @@ impl Detector for RansomwareDetector {
                     .map(|a| a.len())
                     .unwrap_or(0);
 
-                // One of the two hard indicators is required.
+
                 if !shadow_deleted && modify_rate < 500.0 {
                     return None;
                 }

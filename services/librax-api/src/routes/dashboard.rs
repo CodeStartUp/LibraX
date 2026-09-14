@@ -40,10 +40,7 @@ pub async fn health(State(state): State<SharedState>) -> Json<HealthResponse> {
     })
 }
 
-/// The numbers behind the overview page.
-///
-/// Every field is computed from what the pipeline actually processed. The UI is
-/// not permitted to invent any of them.
+
 #[derive(Serialize)]
 pub struct DashboardResponse {
     pub hospitals: usize,
@@ -62,9 +59,11 @@ pub struct DashboardResponse {
 
     pub incidents_total: usize,
     pub incidents_critical: usize,
+
+    pub incidents_live: usize,
     pub top_incident: Option<TopIncident>,
 
-    /// The reduction story, as measured rather than asserted.
+
     pub reduction: Reduction,
 
     pub sources_total: usize,
@@ -92,6 +91,7 @@ pub struct TopIncident {
     pub title: String,
     pub overall_risk: f32,
     pub severity: Severity,
+    pub live: bool,
 }
 
 #[derive(Serialize)]
@@ -100,7 +100,7 @@ pub struct Reduction {
     pub signals: usize,
     pub incidents: usize,
     pub critical_incidents: usize,
-    /// Events per surfaced incident, or `None` before any incident exists.
+
     pub events_per_incident: Option<u64>,
 }
 
@@ -127,6 +127,12 @@ pub async fn dashboard(State(state): State<SharedState>) -> Json<DashboardRespon
             .filter(|b| b.incident.severity() == Severity::Critical)
             .count();
 
+        let incidents_live = soc
+            .incidents
+            .iter()
+            .filter(|b| b.incident.is_live())
+            .count();
+
         let top = soc
             .incidents
             .iter()
@@ -142,9 +148,10 @@ pub async fn dashboard(State(state): State<SharedState>) -> Json<DashboardRespon
                 title: b.incident.title.clone(),
                 overall_risk: b.incident.risk.overall_risk,
                 severity: b.incident.severity(),
+                live: b.incident.is_live(),
             });
 
-        // Observed ingest rate over the run so far.
+
         let events_per_minute = soc
             .stats
             .started_at
@@ -173,6 +180,7 @@ pub async fn dashboard(State(state): State<SharedState>) -> Json<DashboardRespon
 
             incidents_total: soc.incidents.len(),
             incidents_critical: critical,
+            incidents_live,
             top_incident: top,
 
             reduction: Reduction {

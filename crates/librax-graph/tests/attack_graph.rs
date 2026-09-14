@@ -1,4 +1,4 @@
-//! The graph must reconstruct the attack path and prove every edge.
+
 
 use std::sync::Arc;
 
@@ -128,7 +128,7 @@ fn every_derived_edge_cites_its_evidence() {
         unproven.iter().map(|e| &e.id).collect::<Vec<_>>()
     );
 
-    // And the evidence must be real event ids from the chain.
+
     for edge in &graph.edges {
         for event_id in &edge.evidence_event_ids {
             assert!(
@@ -208,7 +208,7 @@ fn the_graph_is_connected_enough_to_tell_a_story() {
     );
     assert!(graph.edge_count() >= 12);
 
-    // Starting from Alice, the whole path must be walkable to the patient data.
+
     let alice = graph
         .nodes
         .iter()

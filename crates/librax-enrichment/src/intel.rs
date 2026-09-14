@@ -1,11 +1,4 @@
-//! Indicator reputation: file hashes, addresses and domains.
-//!
-//! This is a local, synthetic feed. It is not VirusTotal and does not call one,
-//! and every record says which feed it came from so the console can be honest
-//! about that. An indicator that is not in the feed returns
-//! [`IocVerdict::Unknown`] rather than `Clean`: never having been reported is not
-//! the same as having been cleared, and a SOC that confuses the two will
-//! eventually wave through the one sample that mattered.
+
 
 use std::collections::HashMap;
 
@@ -37,8 +30,7 @@ impl IocKind {
         }
     }
 
-    /// Infers the indicator type from its shape, so an analyst can paste any of
-    /// them into one search box.
+
     pub fn of(value: &str) -> Option<Self> {
         let trimmed = value.trim();
         if trimmed.is_empty() {
@@ -75,9 +67,9 @@ impl IocKind {
 pub enum IocVerdict {
     Malicious,
     Suspicious,
-    /// Reported and assessed as benign.
+
     Clean,
-    /// Absent from the feed. Not a clearance.
+
     #[default]
     Unknown,
 }
@@ -104,13 +96,13 @@ pub struct IocRecord {
     pub value: String,
     pub verdict: IocVerdict,
     pub verdict_label: String,
-    /// 0.0-1.0 in the assessment, not in the lookup.
+
     pub confidence: f32,
 
     pub threat_name: Option<String>,
     pub malware_family: Option<String>,
     pub categories: Vec<String>,
-    /// Engines flagging it, in the form the analyst expects: `58/72`.
+
     pub detection_ratio: Option<String>,
 
     pub first_reported: Option<DateTime<Utc>>,
@@ -118,12 +110,12 @@ pub struct IocRecord {
     pub feeds: Vec<String>,
     pub notes: Vec<String>,
 
-    // Address context.
+
     pub asn: Option<String>,
     pub country: Option<String>,
     pub hosting: Option<String>,
 
-    // File context.
+
     pub file_names: Vec<String>,
     pub file_type: Option<String>,
     pub signer: Option<String>,
@@ -157,7 +149,7 @@ impl IocRecord {
         }
     }
 
-    /// The honest answer for an indicator nobody has reported.
+
     pub fn unknown(value: &str) -> Self {
         let kind = IocKind::of(value).unwrap_or(IocKind::Domain);
         let mut record = Self::new(kind, value, IocVerdict::Unknown, 0.0);
@@ -171,7 +163,7 @@ impl IocRecord {
     }
 }
 
-/// Local indicator feed.
+
 pub struct ThreatIntel {
     records: HashMap<String, IocRecord>,
     feed_name: String,
@@ -196,12 +188,12 @@ impl ThreatIntel {
         self.records.is_empty()
     }
 
-    /// Every record, for the indicator browser.
+
     pub fn all(&self) -> impl Iterator<Item = &IocRecord> {
         self.records.values()
     }
 
-    /// Looks up an indicator of any supported type.
+
     pub fn lookup(&self, value: &str) -> IocRecord {
         let key = value.trim().to_lowercase();
 
@@ -222,7 +214,7 @@ impl ThreatIntel {
         self.records.insert(record.value.to_lowercase(), record);
     }
 
-    /// The feed the demo environment ships with.
+
     pub fn demo() -> Self {
         let mut intel = Self {
             records: HashMap::new(),
@@ -232,7 +224,6 @@ impl ThreatIntel {
         let day = |d: i64| Utc.with_ymd_and_hms(2026, 1, 1, 0, 0, 0).unwrap() + Duration::days(d);
         let now = Utc::now();
 
-        // ---- malicious files ----
 
         let mut lure = IocRecord::new(
             IocKind::Sha256,
@@ -320,11 +311,6 @@ impl ThreatIntel {
         ];
         intel.insert(ransom);
 
-        // ---- legitimate binaries that were abused ----
-        //
-        // Marking these malicious because they appear in an intrusion would be a
-        // false positive an analyst has to unpick. They are clean, and the note
-        // carries the nuance that matters: the tool is fine, the use was not.
 
         for (sha, md5, name, signer, note) in [
             (
@@ -366,10 +352,7 @@ impl ThreatIntel {
             }
         }
 
-        // ---- routine fleet software ----
-        //
-        // Present so the estate is not a wall of UNKNOWN. A fleet where every
-        // binary is unassessed tells the analyst nothing about the few that matter.
+
         for (name, sha, md5, signer) in FLEET_SOFTWARE {
             for (kind, value) in [(IocKind::Sha256, *sha), (IocKind::Md5, *md5)] {
                 let mut record = IocRecord::new(kind, value, IocVerdict::Clean, 0.98);
@@ -389,7 +372,6 @@ impl ThreatIntel {
             }
         }
 
-        // ---- addresses ----
 
         let mut attacker = IocRecord::new(
             IocKind::Ipv4,
@@ -441,7 +423,6 @@ impl ThreatIntel {
             intel.insert(record);
         }
 
-        // ---- domains ----
 
         let mut c2 = IocRecord::new(
             IocKind::Domain,
@@ -490,11 +471,7 @@ impl ThreatIntel {
     }
 }
 
-/// Ordinary software on the hospital fleet: name, SHA256, MD5, signer.
-///
-/// Public because `librax-connectors` stamps these hashes onto the routine
-/// process events it generates. One table, so the telemetry and the feed cannot
-/// disagree about what a given binary hashes to.
+
 pub const FLEET_SOFTWARE: &[(&str, &str, &str, &str)] = &[
     (
         "chrome.exe",
@@ -534,10 +511,7 @@ pub const FLEET_SOFTWARE: &[(&str, &str, &str, &str)] = &[
     ),
 ];
 
-/// Hashes for the files the demo environment observes.
-///
-/// These are fabricated values for a synthetic estate; they are not the hashes of
-/// any real sample, and no real malware exists anywhere in this project.
+
 pub mod hashes {
     pub const LURE_SHA256: &str =
         "9f2c1b7ad4e58c0a3b6d9e11f47c2a8de5b0f39c7a1d4e62b8f05c93a7e1d208";
@@ -580,7 +554,7 @@ mod tests {
 
     #[test]
     fn an_ip_is_not_mistaken_for_a_domain() {
-        // Both contain dots; the octet check has to win.
+
         assert_eq!(IocKind::of("10.10.2.15"), Some(IocKind::Ipv4));
         assert_eq!(IocKind::of("999.1.1.1"), Some(IocKind::Domain));
     }
@@ -634,7 +608,7 @@ mod tests {
             assert!(!record.notes.is_empty());
         }
 
-        // The point is discoverable: the tool is fine, the usage was not.
+
         let ps = intel.lookup(hashes::POWERSHELL_SHA256);
         assert!(ps.notes[0].contains("command line"), "{:?}", ps.notes);
     }

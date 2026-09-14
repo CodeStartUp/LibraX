@@ -3,7 +3,7 @@ use librax_types::{SecuritySignal, Severity, Tactic};
 use crate::engine::{DetectionContext, Detector};
 use crate::support::{attr_bool, attr_num, attr_str, entities_of, signal};
 
-/// Impossible travel and MFA fatigue on VPN authentication.
+
 pub struct VpnAnomalyDetector;
 
 const VPN_ID: &str = "vpn_identity_anomaly";
@@ -27,7 +27,7 @@ impl Detector for VpnAnomalyDetector {
                 let previous = attr_str(event, "previous_country").unwrap_or_default();
                 let gap_minutes = attr_num(event, "minutes_since_previous_session");
 
-                // Geography that cannot be reconciled with the previous session.
+
                 if !country.is_empty()
                     && !previous.is_empty()
                     && country != previous
@@ -90,7 +90,7 @@ impl Detector for VpnAnomalyDetector {
     }
 }
 
-/// Password spraying and brute force that ends in a successful logon.
+
 pub struct CredentialAbuseDetector;
 
 const CRED_ID: &str = "credential_abuse";
@@ -170,7 +170,7 @@ impl Detector for CredentialAbuseDetector {
     }
 }
 
-/// Privileged credential checkout that sidesteps normal change control.
+
 pub struct PrivilegedAccessDetector;
 
 const PAM_ID: &str = "privileged_access_anomaly";

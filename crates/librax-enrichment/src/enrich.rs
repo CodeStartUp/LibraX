@@ -4,15 +4,11 @@ use librax_types::{CanonicalEvent, Enrichment, ThreatReputation};
 
 use crate::inventory::{Inventory, demo};
 
-/// Known-bad indicators for the demo. In enterprise mode this is where a real
-/// threat-intel feed would plug in; the local demo must not need one.
+
 const MALICIOUS_IPS: &[&str] = &[demo::ATTACKER_IP, "91.219.236.18", "45.133.1.90"];
 const MALICIOUS_DOMAINS: &[&str] = &[demo::C2_DOMAIN, demo::PHISHING_DOMAIN];
 
-/// Attaches identity, asset and reputation context to canonical events.
-///
-/// Enrichment never invents entities: if an asset or identity is unknown, the
-/// fields stay empty and downstream scoring treats the gap as uncertainty.
+
 pub struct Enricher {
     inventory: Arc<Inventory>,
 }
@@ -22,8 +18,7 @@ impl Enricher {
         Self::shared(Arc::new(inventory))
     }
 
-    /// Shares one inventory with other components, such as the simulator, rather
-    /// than duplicating ten thousand assets per consumer.
+
     pub fn shared(inventory: Arc<Inventory>) -> Self {
         Self { inventory }
     }
@@ -39,7 +34,7 @@ impl Enricher {
     pub fn enrich(&self, event: &mut CanonicalEvent) {
         let mut enrichment = Enrichment::default();
 
-        // Identity context.
+
         if let Some(user) = event.user()
             && let Some(identity) = self.inventory.identity_by_name(user)
         {
@@ -49,7 +44,7 @@ impl Enricher {
             enrichment.service_account = identity.service_account;
         }
 
-        // Asset context, preferring the host and falling back to the target.
+
         let asset = event
             .host_name()
             .and_then(|h| self.inventory.asset_by_name(h))
@@ -73,7 +68,7 @@ impl Enricher {
             event.destination.as_ref().and_then(|d| d.domain.as_deref()),
         );
 
-        // Preserve a maintenance flag the source may have declared.
+
         enrichment.maintenance_window = event
             .attributes
             .get("maintenance_window")
@@ -96,7 +91,7 @@ fn reputation(ip: Option<&str>, domain: Option<&str>) -> ThreatReputation {
     {
         return ThreatReputation::Malicious;
     }
-    // Private ranges are treated as internal-clean; anything else is unproven.
+
     match ip {
         Some(v) if v.starts_with("10.") || v.starts_with("192.168.") => ThreatReputation::Clean,
         Some(_) => ThreatReputation::Suspicious,

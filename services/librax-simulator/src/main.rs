@@ -1,10 +1,4 @@
-//! Pushes synthetic telemetry at the API so the SOC looks live.
-//!
-//! The API seeds its own demo corpus at startup, so a judge sees a populated
-//! console even with this service stopped. What this adds is movement: a steady
-//! trickle of background events so event rates, source health and the "quiet
-//! source becomes a blind spot" behaviour are driven by real traffic rather than
-//! a fixed snapshot.
+
 
 use std::sync::Arc;
 use std::time::Duration as StdDuration;
@@ -19,8 +13,8 @@ use tracing_subscriber::EnvFilter;
 struct Settings {
     api_url: String,
     events_per_second: usize,
-    /// Also send the scripted intrusion. Off by default, because the API seeds
-    /// it; turning this on gives a second, later intrusion.
+
+
     inject_attack: bool,
     startup_delay: StdDuration,
 }
@@ -74,8 +68,7 @@ async fn main() {
         "simulator starting"
     );
 
-    // The API generates its own inventory and seed corpus; give it time to bind
-    // before the first batch, rather than failing a race at startup.
+
     tokio::time::sleep(settings.startup_delay).await;
     wait_for_api(&client, &settings.api_url).await;
 
@@ -100,14 +93,14 @@ async fn main() {
             Ok(()) => {
                 sent += batch.len() as u64;
                 consecutive_failures = 0;
-                // One line a minute, not one a second.
+
                 if sent % (settings.events_per_second as u64 * 60).max(1) == 0 {
                     tracing::info!(total_sent = sent, "telemetry flowing");
                 }
             }
             Err(e) => {
                 consecutive_failures += 1;
-                // A restarting API should not take the simulator down with it.
+
                 tracing::warn!(
                     error = %e,
                     consecutive_failures,
@@ -135,7 +128,7 @@ async fn send(client: &reqwest::Client, endpoint: &str, events: &[RawEvent]) -> 
     }
 }
 
-/// Blocks until the API answers its health check.
+
 async fn wait_for_api(client: &reqwest::Client, base: &str) {
     let health = format!("{}/api/v1/health", base.trim_end_matches('/'));
 

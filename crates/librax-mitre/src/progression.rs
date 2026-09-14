@@ -4,7 +4,7 @@ use serde::Serialize;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum StageStatus {
-    /// At least one technique in this stage has evidence behind it.
+
     Observed,
     NotObserved,
 }
@@ -18,15 +18,15 @@ pub struct Stage {
     pub techniques: Vec<MitreTechniqueRef>,
 }
 
-/// How far along the kill chain an incident has actually been observed to travel.
+
 #[derive(Debug, Clone, Serialize)]
 pub struct Progression {
     pub stages: Vec<Stage>,
     pub observed_stages: usize,
     pub total_stages: usize,
     pub furthest: Option<Tactic>,
-    /// 0-100. Deliberately suppressed when only one or two stages are evidenced,
-    /// because a lone technique is an alert, not a campaign.
+
+
     pub score: f32,
 }
 
@@ -40,7 +40,7 @@ impl Progression {
     }
 }
 
-/// Buckets validated technique references into the UI's attack-chain ribbon.
+
 pub fn analyse(refs: &[MitreTechniqueRef]) -> Progression {
     let chain = Tactic::chain();
 
@@ -72,8 +72,7 @@ pub fn analyse(refs: &[MitreTechniqueRef]) -> Progression {
         .filter(|s| s.status == StageStatus::Observed)
         .count();
 
-    // Techniques outside the ribbon (Defense Evasion, Persistence) still count
-    // towards how far the intrusion reached.
+
     let furthest = refs
         .iter()
         .map(|r| r.tactic)

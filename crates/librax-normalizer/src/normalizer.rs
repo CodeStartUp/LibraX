@@ -9,9 +9,9 @@ use crate::parsers;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum RejectReason {
-    /// Already normalized. Sources re-deliver; incidents must not double-count.
+
     Duplicate,
-    /// Implausible clock, which usually means a broken agent.
+
     TimestampOutOfRange,
     MissingIdentifier,
 }
@@ -28,14 +28,11 @@ pub struct Rejection {
 pub struct NormalizeOutcome {
     pub events: Vec<CanonicalEvent>,
     pub rejections: Vec<Rejection>,
-    /// Events parsed but not understood, kept rather than dropped.
+
     pub unsupported: usize,
 }
 
-/// Turns raw vendor payloads into canonical events.
-///
-/// A malformed event never stops the pipeline: it is counted against its source
-/// and normalization continues, per the failure-handling rules.
+
 pub struct Normalizer {
     seen: HashSet<String>,
     order: VecDeque<String>,
@@ -56,7 +53,7 @@ impl Normalizer {
         Self {
             seen: HashSet::new(),
             order: VecDeque::new(),
-            // Bounded so a long-running demo cannot grow the dedup set forever.
+
             dedup_capacity: 500_000,
             future_tolerance: Duration::hours(24),
             past_tolerance: Duration::days(30),
@@ -188,7 +185,7 @@ mod tests {
         let events = chain_events();
         assert_eq!(events.len(), 11);
         assert!(events.iter().all(|e| !e.event_id.is_empty()));
-        // Evidence must stay traceable back to the raw record.
+
         assert!(events.iter().all(|e| e.raw_reference.is_some()));
     }
 

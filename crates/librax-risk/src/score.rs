@@ -5,20 +5,19 @@ use librax_types::{
     CanonicalEvent, RiskContribution, RiskScore, SecuritySignal, SourceType, ThreatReputation,
 };
 
-/// Everything the risk engine is allowed to look at.
+
 pub struct RiskInputs<'a> {
     pub signals: &'a [SecuritySignal],
-    /// The events the signals cite, used for cross-source and context factors.
+
     pub events: &'a [CanonicalEvent],
     pub graph: &'a AttackGraph,
-    /// 0-100 from the ATT&CK progression analysis.
+
     pub progression_score: f32,
-    /// 0.0-1.0 mean link strength from correlation.
+
     pub correlation_cohesion: f32,
 }
 
-/// Points available to each threat-confidence factor. They sum to 100, so the
-/// breakdown the UI renders adds up to the score it sits beside.
+
 mod threat_points {
     pub const DETECTION_STRENGTH: f32 = 40.0;
     pub const CORROBORATION: f32 = 20.0;
@@ -27,22 +26,18 @@ mod threat_points {
     pub const COHESION: f32 = 8.0;
 }
 
-/// Impact is dominated by the single most critical thing the intrusion touched.
-///
-/// The remaining factors are escalators on top of that, not a division of it: an
-/// attack focused on the patient database must not score below a diffuse attack
-/// across a dozen unimportant assets.
+
 mod impact_points {
     pub const PEAK_CRITICALITY: f32 = 70.0;
     pub const REGULATED_DATA: f32 = 15.0;
     pub const PRIVILEGED_IDENTITY: f32 = 8.0;
     pub const MULTIPLE_CRITICAL: f32 = 6.0;
-    /// Awarded only for spread *beyond* one campus, so a single-site intrusion is
-    /// not docked points for being contained.
+
+
     pub const MULTI_CAMPUS: f32 = 3.0;
 }
 
-/// How the three dimensions combine into one priority number.
+
 mod overall_weights {
     pub const THREAT: f32 = 0.40;
     pub const IMPACT: f32 = 0.35;
@@ -91,7 +86,7 @@ pub fn assess_risk(inputs: &RiskInputs<'_>) -> RiskScore {
     }
 }
 
-/// "How likely is this actually malicious?"
+
 fn threat_confidence(inputs: &RiskInputs<'_>, out: &mut Vec<RiskContribution>) -> f32 {
     let signals = inputs.signals;
 
@@ -108,8 +103,8 @@ fn threat_confidence(inputs: &RiskInputs<'_>, out: &mut Vec<RiskContribution>) -
     ));
 
     let detectors: HashSet<&str> = signals.iter().map(|s| s.detector_id.as_str()).collect();
-    // Eight independent detectors is treated as full corroboration; beyond that
-    // the marginal evidence value is small.
+
+
     let corroboration = threat_points::CORROBORATION * (detectors.len().min(8) as f32 / 8.0);
     out.push(contribution(
         "Independent detectors",
@@ -162,8 +157,7 @@ fn threat_confidence(inputs: &RiskInputs<'_>, out: &mut Vec<RiskContribution>) -
         ),
     ));
 
-    // Activity inside a declared maintenance window is more likely to be
-    // legitimate administration, so it pulls confidence down.
+
     let in_maintenance = inputs.events.iter().any(|e| {
         e.attributes
             .get("maintenance_window")
@@ -182,7 +176,7 @@ fn threat_confidence(inputs: &RiskInputs<'_>, out: &mut Vec<RiskContribution>) -
     (detection + corroboration + cross_source + intel + cohesion + maintenance).clamp(0.0, 100.0)
 }
 
-/// "How much does the affected environment matter?"
+
 fn business_impact(inputs: &RiskInputs<'_>, out: &mut Vec<RiskContribution>) -> f32 {
     let criticalities: Vec<u8> = inputs
         .graph

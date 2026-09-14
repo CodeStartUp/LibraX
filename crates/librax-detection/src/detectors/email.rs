@@ -3,11 +3,7 @@ use librax_types::{EventCategory, SecuritySignal, Severity, ThreatReputation};
 use crate::engine::{DetectionContext, Detector};
 use crate::support::{attr_bool, attr_str, entities_of, signal};
 
-/// Flags delivered mail that looks like a targeted lure.
-///
-/// Requires at least two independent indicators. One failed DMARC check is a
-/// misconfigured newsletter; a macro attachment from a lookalike domain that
-/// fails all three checks and was clicked is an intrusion.
+
 pub struct PhishingDetector;
 
 const ID: &str = "phishing_lure_delivered";
@@ -61,7 +57,7 @@ impl Detector for PhishingDetector {
                     reasons.push("recipient followed the embedded link".to_string());
                 }
 
-                // Corroboration required: a single weak indicator is not phishing.
+
                 if reasons.len() < 2 {
                     return None;
                 }

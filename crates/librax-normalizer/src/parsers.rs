@@ -6,11 +6,7 @@ use librax_types::{
 };
 use serde_json::Value;
 
-/// Starts a canonical event from the raw envelope.
-///
-/// The whole payload is carried into `attributes` so detectors can reason about
-/// source-specific behaviour (failure bursts, row baselines, beacon intervals)
-/// without the parser having to anticipate every question.
+
 fn base(
     raw: &RawEvent,
     category: EventCategory,
@@ -56,8 +52,7 @@ fn bool_field(raw: &RawEvent, key: &str) -> bool {
     opt_bool_field(raw, key).unwrap_or(false)
 }
 
-/// Distinguishes "the source said false" from "the source did not say", which
-/// matters for signing state: unsigned and unreported are not the same claim.
+
 fn opt_bool_field(raw: &RawEvent, key: &str) -> Option<bool> {
     raw.payload.get(key)?.as_bool()
 }
@@ -79,8 +74,7 @@ fn endpoint(
     })
 }
 
-/// Dispatches on source type. An unrecognised source still produces an event,
-/// flagged `unsupported`, rather than being silently dropped.
+
 pub fn parse(raw: &RawEvent) -> CanonicalEvent {
     match raw.source_type {
         SourceType::ActiveDirectory | SourceType::EntraId => directory(raw),
@@ -100,6 +94,12 @@ pub fn parse(raw: &RawEvent) -> CanonicalEvent {
 }
 
 fn directory(raw: &RawEvent) -> CanonicalEvent {
+
+
+    if raw.payload.get("status").is_some() || raw.payload.get("event_kind").is_some() {
+        return directory_live(raw);
+    }
+
     let event_id = i64_field(raw, "EventID").unwrap_or_default();
     let failures = i64_field(raw, "failure_count").unwrap_or_default();
 
@@ -123,6 +123,83 @@ fn directory(raw: &RawEvent) -> CanonicalEvent {
     event
 }
 
+
+fn directory_live(raw: &RawEvent) -> CanonicalEvent {
+    let kind = str_field(raw, "event_kind").unwrap_or_else(|| "auth".into());
+    let status = str_field(raw, "status").unwrap_or_default();
+    let success = opt_bool_field(raw, "success").unwrap_or(status == "NT_STATUS_OK");
+    let protocol = str_field(raw, "protocol").unwrap_or_default();
+
+    let (category, activity, severity) = match kind.as_str() {
+        "smb" => {
+            let op = str_field(raw, "operation").unwrap_or_default();
+
+
+            if op.eq_ignore_ascii_case("drsuapi")
+                || op.contains("GetNCChanges")
+                || op.contains("DsGetNCChanges")
+            {
+                (EventCategory::Network, "directory_replication", Severity::High)
+            } else if op.is_empty() || op == "connect" || op == "tree_connect" {
+                (EventCategory::Network, "smb_tree_connect", Severity::Info)
+            } else {
+                (EventCategory::Network, "smb_operation", Severity::Info)
+            }
+        }
+        _ => {
+            if success {
+                (EventCategory::Authentication, "logon_success", Severity::Info)
+            } else {
+                (EventCategory::Authentication, "logon_failure", Severity::Low)
+            }
+        }
+    };
+
+    let mut event = base(raw, category, activity, severity);
+    event.principal = str_field(raw, "TargetUserName")
+        .filter(|u| !u.is_empty() && u != "-")
+        .map(EntityRef::user);
+    event.host = str_field(raw, "WorkstationName")
+        .filter(|w| !w.is_empty() && w != "-")
+        .map(|w| EntityRef::host(w.trim_start_matches('\\')));
+    event.source = endpoint(str_field(raw, "IpAddress"), None, None);
+    if let Some(share) = str_field(raw, "share").filter(|s| !s.is_empty()) {
+        event.target = Some(EntityRef::new(EntityKind::File, share));
+    }
+
+    event.message = match activity {
+        "logon_success" => format!(
+            "{} authenticated from {} via {}",
+            event.user().unwrap_or("unknown account"),
+            event.src_ip().unwrap_or("unknown address"),
+            if protocol.is_empty() { "directory" } else { &protocol }
+        ),
+        "logon_failure" => format!(
+            "Failed {} logon for {} from {} ({})",
+            if protocol.is_empty() { "directory" } else { &protocol },
+            event.user().unwrap_or("unknown account"),
+            event.src_ip().unwrap_or("unknown address"),
+            if status.is_empty() { "denied" } else { &status }
+        ),
+        "smb_tree_connect" => format!(
+            "{} connected to {} on the domain controller",
+            event.user().unwrap_or("unknown account"),
+            event.target_name().unwrap_or("a share")
+        ),
+        "directory_replication" => format!(
+            "Directory replication requested by {} from {}",
+            event.user().unwrap_or("an unknown principal"),
+            event.src_ip().unwrap_or("an unknown address")
+        ),
+        _ => format!(
+            "{} on the domain controller by {}",
+            activity,
+            event.user().unwrap_or("unknown account")
+        ),
+    };
+    event
+}
+
 fn endpoint_agent(raw: &RawEvent) -> CanonicalEvent {
     let kind = str_field(raw, "event_type").unwrap_or_default();
 
@@ -143,7 +220,7 @@ fn endpoint_agent(raw: &RawEvent) -> CanonicalEvent {
             pid: i64_field(raw, "pid").and_then(|p| u32::try_from(p).ok()),
             command_line: str_field(raw, "process_cmdline"),
             parent_name: str_field(raw, "parent_process"),
-            // Vendors disagree on the field name; accept either.
+
             hash_sha256: str_field(raw, "process_sha256").or_else(|| str_field(raw, "sha256")),
             hash_md5: str_field(raw, "process_md5").or_else(|| str_field(raw, "md5")),
             signed: opt_bool_field(raw, "signed"),
@@ -306,9 +383,8 @@ fn database(raw: &RawEvent) -> CanonicalEvent {
 }
 
 fn pacs(raw: &RawEvent) -> CanonicalEvent {
-    // Retrieval volume is what separates a radiologist opening a study from a
-    // sweep of the archive, so an event carrying a study count is classified as a
-    // retrieval and keeps the count where the bulk-access detector can see it.
+
+
     let studies = i64_field(raw, "rows_returned").or_else(|| i64_field(raw, "studies_returned"));
     let activity = if studies.is_some() {
         "pacs_study_retrieved"
@@ -318,8 +394,7 @@ fn pacs(raw: &RawEvent) -> CanonicalEvent {
 
     let mut event = base(raw, EventCategory::MedicalImaging, activity, Severity::Info);
 
-    // Vendors label the operator either way, and the archive is sometimes named
-    // separately from the device serving it.
+
     event.principal = str_field(raw, "user")
         .or_else(|| str_field(raw, "principal"))
         .map(|p| EntityRef::user(p));

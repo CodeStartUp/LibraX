@@ -22,7 +22,7 @@ pub enum ResponseError {
 #[derive(Debug, Clone)]
 pub struct SimulationOutcome {
     pub action: ResponseAction,
-    /// What would have happened, had this been a real integration.
+
     pub narrative: String,
     pub approved_by: Option<String>,
 }
@@ -44,7 +44,7 @@ impl ResponseEngine {
         }
     }
 
-    /// Playbooks that have something to say about this incident.
+
     pub fn matching_playbooks(&self, incident: &Incident) -> Vec<&'static str> {
         self.playbooks
             .iter()
@@ -53,15 +53,15 @@ impl ResponseEngine {
             .collect()
     }
 
-    /// Recommended containment, most confident first.
+
     pub fn recommend(&self, incident: &Incident, graph: &AttackGraph) -> Vec<ResponseAction> {
         let mut seen: HashSet<String> = HashSet::new();
         let mut actions: Vec<ResponseAction> = Vec::new();
 
         for playbook in self.playbooks.iter().filter(|p| p.applies(incident)) {
             for action in playbook.actions(incident, graph) {
-                // Two playbooks can reach the same conclusion; that is agreement,
-                // not two separate things to do.
+
+
                 if seen.insert(action.action_id.clone()) {
                     actions.push(action);
                 }
@@ -77,11 +77,7 @@ impl ResponseEngine {
         actions
     }
 
-    /// Simulates an action.
-    ///
-    /// This function deliberately has no side effects outside the passed-in
-    /// action. It does not call an EDR, a directory, or a firewall, and there is
-    /// no configuration that makes it do so.
+
     pub fn simulate(
         &self,
         action: &mut ResponseAction,
@@ -139,7 +135,7 @@ impl ResponseEngine {
     }
 }
 
-/// What the action would do, in the terms an analyst would use.
+
 fn effect_of(action: &ResponseAction) -> String {
     let target = &action.target.name;
 

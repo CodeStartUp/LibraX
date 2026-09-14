@@ -1,18 +1,11 @@
-//! The scripted demo intrusion.
-//!
-//! Each event carries the *behaviour* its detector needs to reason about --
-//! encoded-command flags, failure bursts, row counts against a baseline -- so no
-//! detector ever fires on a keyword in an event name. The payload shapes here
-//! are deliberately vendor-flavoured; `librax-normalizer` is the only crate that
-//! knows how to read them.
+
 
 use chrono::{DateTime, Duration, Utc};
 use librax_enrichment::{demo, hashes};
 use librax_types::{RawEvent, SourceType};
 use serde_json::json;
 
-/// Minutes after the start of the intrusion, matching the 09:01-09:32 timeline
-/// in the demo script.
+
 pub const CHAIN_OFFSETS_MINUTES: [i64; 11] = [0, 3, 4, 7, 11, 16, 19, 23, 26, 29, 31];
 
 fn raw(
@@ -31,16 +24,13 @@ fn raw(
     }
 }
 
-/// The eleven events that must correlate into one incident.
-///
-/// `start` is when the intrusion begins; every event is offset from it, so the
-/// whole chain shifts together and stays internally consistent.
+
 pub fn attack_chain(start: DateTime<Utc>) -> Vec<RawEvent> {
     let at = |minutes: i64| start + Duration::minutes(minutes);
     let o = CHAIN_OFFSETS_MINUTES;
 
     vec![
-        // EVT-01 - spear-phishing lure into HR.
+
         raw(
             "EVT-01",
             SourceType::Email,
@@ -64,7 +54,7 @@ pub fn attack_chain(start: DateTime<Utc>) -> Vec<RawEvent> {
                 "recipient_clicked": true
             }),
         ),
-        // EVT-02 - VPN session from a country the user was not in 41 minutes ago.
+
         raw(
             "EVT-02",
             SourceType::Vpn,
@@ -83,7 +73,7 @@ pub fn attack_chain(start: DateTime<Utc>) -> Vec<RawEvent> {
                 "mfa_accepted_after": 6
             }),
         ),
-        // EVT-03 - encoded PowerShell spawned by Word: the macro executing.
+
         raw(
             "EVT-03",
             SourceType::Edr,
@@ -96,8 +86,8 @@ pub fn attack_chain(start: DateTime<Utc>) -> Vec<RawEvent> {
                 "process_name": "powershell.exe",
                 "parent_process": "WINWORD.EXE",
                 "process_cmdline": "powershell.exe -nop -w hidden -ep bypass -enc SQBFAFgAIAAoAE4AZQB3AC0ATwBiAGoAZQBjAHQAIABOAGUAdAAuAFcAZQBiAEMAbABpAGUAbgB0ACkA",
-                // The interpreter is the legitimate signed binary; what makes this
-                // an indicator is the command line, not the file.
+
+
                 "process_sha256": hashes::POWERSHELL_SHA256,
                 "process_md5": hashes::POWERSHELL_MD5,
                 "signed": true,
@@ -105,7 +95,7 @@ pub fn attack_chain(start: DateTime<Utc>) -> Vec<RawEvent> {
                 "pid": 7412
             }),
         ),
-        // EVT-04 - beacon to the attacker's infrastructure.
+
         raw(
             "EVT-04",
             SourceType::Firewall,
@@ -127,7 +117,7 @@ pub fn attack_chain(start: DateTime<Utc>) -> Vec<RawEvent> {
                 "domain_age_days": 4
             }),
         ),
-        // EVT-05 - internal discovery, delivered as flow summary not raw packets.
+
         raw(
             "EVT-05",
             SourceType::Firewall,
@@ -144,7 +134,7 @@ pub fn attack_chain(start: DateTime<Utc>) -> Vec<RawEvent> {
                 "baseline_distinct_destinations": 9
             }),
         ),
-        // EVT-06 - password spraying against a privileged service account.
+
         raw(
             "EVT-06",
             SourceType::ActiveDirectory,
@@ -163,7 +153,7 @@ pub fn attack_chain(start: DateTime<Utc>) -> Vec<RawEvent> {
                 "success_event_id": 4624
             }),
         ),
-        // EVT-07 - first-ever WinRM logon from a workstation to an app server.
+
         raw(
             "EVT-07",
             SourceType::Server,
@@ -180,7 +170,7 @@ pub fn attack_chain(start: DateTime<Utc>) -> Vec<RawEvent> {
                 "source_is_workstation": true
             }),
         ),
-        // EVT-08 - privileged credential checked out outside any change window.
+
         raw(
             "EVT-08",
             SourceType::Pam,
@@ -197,7 +187,7 @@ pub fn attack_chain(start: DateTime<Utc>) -> Vec<RawEvent> {
                 "requester_first_use_of_account": true
             }),
         ),
-        // EVT-09 - bulk read of patient records, 438x the usual row count.
+
         raw(
             "EVT-09",
             SourceType::Database,
@@ -214,7 +204,7 @@ pub fn attack_chain(start: DateTime<Utc>) -> Vec<RawEvent> {
                 "contains_phi": true
             }),
         ),
-        // EVT-10 - the extract compressed into a staging archive.
+
         raw(
             "EVT-10",
             SourceType::Edr,
@@ -235,7 +225,7 @@ pub fn attack_chain(start: DateTime<Utc>) -> Vec<RawEvent> {
                 "source_records": 184230
             }),
         ),
-        // EVT-11 - shadow copies destroyed while files are mass-renamed.
+
         raw(
             "EVT-11",
             SourceType::Edr,
@@ -259,10 +249,7 @@ pub fn attack_chain(start: DateTime<Utc>) -> Vec<RawEvent> {
     ]
 }
 
-/// A volumetric attack on a campus gateway.
-///
-/// Deliberately unrelated to the intrusion above: it proves correlation groups
-/// by shared context rather than sweeping every critical alert into one case.
+
 pub fn ddos_burst(at: DateTime<Utc>) -> RawEvent {
     raw(
         "EVT-DDOS-01",
@@ -283,7 +270,7 @@ pub fn ddos_burst(at: DateTime<Utc>) -> RawEvent {
     )
 }
 
-/// Wall-clock start of the demo intrusion: 09:01 UTC on the given day.
+
 pub fn default_start(now: DateTime<Utc>) -> DateTime<Utc> {
     now.date_naive()
         .and_hms_opt(9, 1, 0)

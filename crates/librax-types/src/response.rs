@@ -3,8 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::entity::EntityRef;
 
-/// Containment actions LibraX can recommend. Every one of these is simulated in
-/// the hackathon build; nothing here touches a real system.
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ResponseActionKind {
@@ -38,7 +37,7 @@ impl ResponseActionKind {
         }
     }
 
-    /// Destructive actions always require explicit analyst approval.
+
     pub fn is_destructive(self) -> bool {
         matches!(
             self,
@@ -57,7 +56,7 @@ impl ResponseActionKind {
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ResponseStatus {
-    /// Offered to the analyst, not yet acted on.
+
     #[default]
     Recommended,
     AwaitingApproval,
@@ -72,7 +71,7 @@ pub struct ResponseAction {
     pub target: EntityRef,
     pub incident_id: String,
 
-    /// 0.0-1.0 confidence that this action is the right move.
+
     pub confidence: f32,
     pub rationale: String,
     pub requires_approval: bool,
@@ -80,7 +79,7 @@ pub struct ResponseAction {
 
     pub created_at: DateTime<Utc>,
     pub simulated_at: Option<DateTime<Utc>>,
-    /// What the system reports back after a simulated run.
+
     pub result: Option<String>,
 }
 
@@ -95,8 +94,8 @@ impl ResponseAction {
         let incident_id = incident_id.into();
 
         Self {
-            // Derived rather than random, so recommending the same containment
-            // twice yields one action instead of a growing pile of duplicates.
+
+
             action_id: format!(
                 "ACT-{}-{}-{}",
                 incident_id,
@@ -117,7 +116,7 @@ impl ResponseAction {
     }
 }
 
-/// Lowercased, hyphenated form suitable for an identifier.
+
 fn slug(value: &str) -> String {
     value
         .chars()

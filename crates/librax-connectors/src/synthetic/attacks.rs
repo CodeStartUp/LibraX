@@ -1,12 +1,4 @@
-//! A catalogue of attacks the analyst can launch against the synthetic estate.
-//!
-//! These exist so the console is not a single canned story. Each playbook uses
-//! the same payload *shapes* the normalizer already understands, with different
-//! actors, tempo and narrative, so detections fire on behaviour rather than on
-//! anything specific to one scripted demo.
-//!
-//! Nothing here is malware. These are log records describing an attack; no
-//! payload is executed, built or downloaded anywhere in this crate.
+
 
 use chrono::{DateTime, Duration, Utc};
 use librax_enrichment::{Asset, AssetRole, Inventory, demo, hashes};
@@ -16,18 +8,18 @@ use serde_json::json;
 
 use super::scenario;
 
-/// One entry in the attack catalogue.
+
 #[derive(Debug, Clone, Serialize)]
 pub struct AttackKind {
     pub id: String,
     pub name: String,
     pub category: String,
     pub description: String,
-    /// What the analyst should expect to see, so the launcher is not a mystery box.
+
     pub expected_detections: Vec<String>,
     pub expected_tactics: Vec<String>,
     pub event_count: usize,
-    /// Wall-clock span of the attack when played at normal speed.
+
     pub duration_seconds: i64,
     pub severity_hint: Severity,
 }
@@ -172,7 +164,7 @@ pub fn kind(id: &str) -> Option<AttackKind> {
     catalog().into_iter().find(|k| k.id == id)
 }
 
-/// The entities an attack is played against.
+
 struct Actors {
     user: String,
     endpoint: String,
@@ -195,13 +187,9 @@ fn role_at<'a>(inventory: &'a Inventory, campus: &str, role: AssetRole) -> Optio
         .find(|a| a.hospital == campus && a.role == role)
 }
 
-/// Picks a cast from a campus, so repeated launches hit different sites and the
-/// console shows an estate rather than one machine.
-///
-/// Falls back to the documented demo entities where a campus lacks a role, which
-/// keeps every event referring to something the inventory actually knows.
+
 fn actors(inventory: &Inventory, campus_index: usize) -> Actors {
-    // Assets and identities are keyed by hospital *name*, not id.
+
     let campus = inventory
         .hospitals
         .get(campus_index % inventory.hospitals.len().max(1))
@@ -271,10 +259,7 @@ fn raw(
     }
 }
 
-/// Builds the events for one attack.
-///
-/// `tag` prefixes every event id, so two launches of the same playbook are two
-/// distinct sets of events rather than duplicates the normalizer discards.
+
 pub fn generate(
     id: &str,
     tag: &str,
@@ -287,7 +272,7 @@ pub fn generate(
     let at = |minutes: i64| start + Duration::minutes(minutes);
 
     match id {
-        // The documented chain keeps the documented entities and event ids.
+
         "multi_stage_ransomware" => {
             let mut events = scenario::attack_chain(start);
             if tag != "EVT" {
@@ -494,9 +479,8 @@ pub fn generate(
                 at(0),
                 json!({
                     "event": "flow_summary",
-                    // The imaging system itself is the actor throughout: the scan,
-                    // the beacon and the bulk retrieval are one machine's story, and
-                    // correlation should be able to see that from the addresses.
+
+
                     "src": a.imaging_ip,
                     "window_seconds": 120,
                     "distinct_destinations": 268,
@@ -587,21 +571,15 @@ pub fn generate(
     }
 }
 
-/// Campus an attack was played against, for the run record.
+
 pub fn campus_of(inventory: &Inventory, campus_index: usize) -> String {
     actors(inventory, campus_index).campus
 }
 
-/// Picks the campus for the nth launch.
-///
-/// Consecutive launches land on different sites, and never on the campus the
-/// documented chain is pinned to: an unrelated playbook sharing that site's
-/// servers and administrators would correlate with the chain on genuinely shared
-/// entities, and the analyst would be handed one incident where there are two.
+
 pub fn rotate_campus(inventory: &Inventory, run_index: usize) -> usize {
-    // Rotating over the remaining sites rather than skipping past the pinned one:
-    // skipping would land two consecutive launches on the same campus, which is
-    // the thing this is here to avoid.
+
+
     let available: Vec<usize> = (0..inventory.hospitals.len())
         .filter(|&i| inventory.hospitals[i].name != demo::HOSPITAL)
         .collect();
@@ -666,7 +644,7 @@ mod tests {
         let first = generate("multi_stage_ransomware", "ATK-A", Utc::now(), &inv, 0);
         let second = generate("multi_stage_ransomware", "ATK-B", Utc::now(), &inv, 0);
 
-        // Otherwise the normalizer would discard the second run as duplicates.
+
         for (a, b) in first.iter().zip(&second) {
             assert_ne!(a.raw_id, b.raw_id);
         }
@@ -705,8 +683,7 @@ mod tests {
     fn consecutive_launches_land_on_different_campuses() {
         let inv = inventory();
 
-        // Two playbooks on one campus share its servers and administrators, so they
-        // correlate into a single incident and the analyst cannot tell them apart.
+
         let sites: Vec<String> = (0..6)
             .map(|run| campus_of(&inv, rotate_campus(&inv, run)))
             .collect();
@@ -739,7 +716,7 @@ mod tests {
         let inv = inventory();
         let events = generate("insider_exfiltration", "ATK", Utc::now(), &inv, 4);
 
-        // The whole point of the scenario: nothing to block at the perimeter.
+
         let payloads = format!("{:?}", events);
         assert!(!payloads.contains(demo::ATTACKER_IP));
         assert!(!payloads.contains(demo::C2_DOMAIN));

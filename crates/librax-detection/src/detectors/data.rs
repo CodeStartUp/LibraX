@@ -3,8 +3,7 @@ use librax_types::{EventCategory, SecuritySignal, Severity};
 use crate::engine::{DetectionContext, Detector};
 use crate::support::{attr_bool, attr_num, attr_str, entities_of, lower, ratio, signal};
 
-/// A workstation authenticating into a server over a remote-execution service
-/// for the first time.
+
 pub struct LateralMovementDetector;
 
 const LATERAL_ID: &str = "lateral_movement";
@@ -28,8 +27,7 @@ impl Detector for LateralMovementDetector {
                     return None;
                 }
 
-                // Server-to-server automation is normal; a workstation reaching
-                // into a server over WinRM is not.
+
                 if !attr_bool(event, "source_is_workstation") {
                     return None;
                 }
@@ -82,7 +80,7 @@ impl Detector for LateralMovementDetector {
     }
 }
 
-/// Bulk reads from a database, measured against that instance's own baseline.
+
 pub struct DatabaseExfiltrationDetector;
 
 const DB_ID: &str = "database_mass_access";
@@ -97,8 +95,8 @@ impl Detector for DatabaseExfiltrationDetector {
     }
 
     fn evaluate(&self, ctx: &DetectionContext<'_>) -> Vec<SecuritySignal> {
-        // Imaging archives are data repositories too: a sweep of PACS is the same
-        // behaviour as a sweep of the patient database, and both map to T1213.
+
+
         ctx.matching(|e| {
             matches!(
                 e.category,
@@ -110,8 +108,7 @@ impl Detector for DatabaseExfiltrationDetector {
             let baseline = attr_num(event, "baseline_rows_returned");
             let multiple = ratio(rows, baseline);
 
-            // Judged against the instance baseline, not an absolute number,
-            // so a busy reporting database does not alert every minute.
+
             if multiple < 10.0 || rows < 1_000.0 {
                 return None;
             }

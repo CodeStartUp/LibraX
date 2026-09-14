@@ -12,16 +12,15 @@ use librax_types::{
 
 use crate::unknowns;
 
-/// How many relationship hops the blast radius is allowed to traverse.
+
 const BLAST_HOPS: usize = 2;
 
-/// A cluster must clear one of these bars to become an incident. Everything else
-/// stays a signal, which is the whole point of prioritisation.
+
 const MIN_SIGNALS_FOR_MULTI_STAGE: usize = 2;
 const MIN_TACTICS_FOR_MULTI_STAGE: usize = 2;
 const LONE_SIGNAL_MIN_CONFIDENCE: f32 = 0.70;
 
-/// Enough distinct stages that calling it multi-stage is accurate.
+
 const MULTI_STAGE_THRESHOLD: usize = 5;
 
 pub struct IncidentContext<'a> {
@@ -32,34 +31,28 @@ pub struct IncidentContext<'a> {
     pub catalog: &'a MitreCatalog,
 }
 
-/// The incident plus the derived artefacts the API serves alongside it.
+
 pub struct BuiltIncident {
     pub incident: Incident,
     pub graph: AttackGraph,
     pub progression: Progression,
-    /// Why correlation grouped these signals, for the "why connected?" panel.
+
     pub correlation_reasons: Vec<String>,
     pub unmapped_techniques: Vec<String>,
 }
 
-/// Assigns incident numbers and assembles cases.
+
 pub struct IncidentBuilder {
     first_number: u64,
     next_number: u64,
-    /// Incident number already given to the story that opened with this signal.
-    ///
-    /// Incidents are re-derived from scratch whenever telemetry arrives, so a
-    /// number handed out by position would move under the analyst: the case they
-    /// have open would become a different case as soon as an unrelated detection
-    /// fired. Keying on the detection that opened the story keeps a case's
-    /// identity for as long as the story exists, and a growing story keeps the
-    /// number it was first given.
+
+
     assigned: HashMap<String, String>,
 }
 
 impl Default for IncidentBuilder {
     fn default() -> Self {
-        // The demo scenario is documented as INC-0042, so numbering starts there.
+
         Self::starting_at(42)
     }
 }
@@ -73,7 +66,7 @@ impl IncidentBuilder {
         }
     }
 
-    /// Number for a cluster anchored on `anchor`, reusing the one it already has.
+
     fn id_for(&mut self, anchor: &str) -> String {
         if let Some(existing) = self.assigned.get(anchor) {
             return existing.clone();
@@ -85,13 +78,13 @@ impl IncidentBuilder {
         id
     }
 
-    /// Forgets assignments, so a cleared console starts numbering again.
+
     pub fn reset(&mut self) {
         self.assigned.clear();
         self.next_number = self.first_number;
     }
 
-    /// Builds an incident, or `None` when the cluster does not warrant one.
+
     pub fn build(&mut self, ctx: &IncidentContext<'_>, cluster: &Cluster) -> Option<BuiltIncident> {
         let signals: Vec<SecuritySignal> = ctx
             .signals
@@ -109,8 +102,8 @@ impl IncidentBuilder {
         let prog = progression::analyse(&techniques);
 
         if !promotable(&signals, &prog) {
-            // Per-cluster, so kept at trace: most clusters in a noisy hour are
-            // rejected here, and logging each one at debug buries everything else.
+
+
             tracing::trace!(
                 signals = signals.len(),
                 stages = prog.observed_stages,
@@ -119,7 +112,7 @@ impl IncidentBuilder {
             return None;
         }
 
-        // Only the events this incident actually cites.
+
         let cited: HashSet<&str> = signals
             .iter()
             .flat_map(|s| s.evidence_event_ids.iter().map(|id| id.as_str()))
@@ -148,12 +141,17 @@ impl IncidentBuilder {
         let first_seen = signals.iter().map(|s| s.timestamp).min()?;
         let last_seen = signals.iter().map(|s| s.timestamp).max()?;
 
-        // The detection that opened the story identifies it. Signals ids are
-        // derived from their evidence, so this survives a rebuild.
+
         let anchor = signals
             .iter()
             .min_by_key(|s| (s.timestamp, s.signal_id.clone()))
             .map(|s| s.signal_id.clone())?;
+
+        let peak_signal_severity = signals
+            .iter()
+            .map(|s| s.severity)
+            .max()
+            .unwrap_or(Severity::Info);
 
         let incident = Incident {
             incident_id: self.id_for(&anchor),
@@ -166,6 +164,7 @@ impl IncidentBuilder {
             risk,
             blast_radius,
             mitre_techniques: techniques,
+            peak_signal_severity,
             unknowns: unknowns::derive(&signals, &events, ctx.inventory, &unmapped),
             first_seen,
             last_seen,
@@ -182,7 +181,7 @@ impl IncidentBuilder {
         })
     }
 
-    /// Builds every cluster that qualifies, most severe first.
+
     pub fn build_all(
         &mut self,
         ctx: &IncidentContext<'_>,
@@ -204,7 +203,7 @@ impl IncidentBuilder {
     }
 }
 
-/// Whether a cluster deserves an analyst's attention as a case.
+
 fn promotable(signals: &[SecuritySignal], prog: &Progression) -> bool {
     if signals.len() >= MIN_SIGNALS_FOR_MULTI_STAGE
         && prog.observed_stages >= MIN_TACTICS_FOR_MULTI_STAGE
@@ -212,9 +211,7 @@ fn promotable(signals: &[SecuritySignal], prog: &Progression) -> bool {
         return true;
     }
 
-    // A single detection can stand alone, but only when it is both serious and
-    // confident. This is what keeps thousands of blocked-connection signals from
-    // becoming thousands of incidents.
+
     signals.len() == 1
         && signals[0].severity >= Severity::High
         && signals[0].confidence >= LONE_SIGNAL_MIN_CONFIDENCE
@@ -265,7 +262,7 @@ fn build_evidence(events: &[CanonicalEvent], signals: &[SecuritySignal]) -> Vec<
     evidence
 }
 
-/// Graph edges as relationships, carrying their evidence across.
+
 fn build_relationships(graph: &AttackGraph) -> Vec<Relationship> {
     graph
         .edges

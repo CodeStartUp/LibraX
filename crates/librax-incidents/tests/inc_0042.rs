@@ -1,4 +1,4 @@
-//! The acceptance test for the demo: 20,000 events must yield one critical case.
+
 
 use std::sync::Arc;
 
@@ -55,7 +55,7 @@ fn pipeline(raws: &[RawEvent]) -> Run {
     }
 }
 
-/// Twenty thousand events of noise with the intrusion and the flood inside it.
+
 fn full_demo() -> Run {
     let now = Utc::now();
     let inventory = Arc::new(Inventory::generate(InventorySpec {
@@ -97,7 +97,7 @@ fn twenty_thousand_events_reduce_to_one_critical_incident() {
         critical.len()
     );
 
-    // The thousands of low-grade noise signals must not have become cases.
+
     assert!(
         run.incidents.len() <= 2,
         "{} incidents from {} signals is not prioritisation",
@@ -121,9 +121,7 @@ fn the_critical_incident_is_inc_0042() {
     assert_eq!(incident.duration_minutes(), 31);
 }
 
-/// Incidents are re-derived from scratch on every batch. If numbering followed
-/// the queue order, the case an analyst has open would silently become a
-/// different case as soon as an unrelated flood arrived and sorted above it.
+
 #[test]
 fn a_case_keeps_its_number_when_the_queue_changes() {
     let now = Utc::now();
@@ -166,7 +164,7 @@ fn a_case_keeps_its_number_when_the_queue_changes() {
     );
 }
 
-/// One pass of the pipeline against a builder the caller keeps.
+
 fn build_with(
     builder: &mut IncidentBuilder,
     inventory: &Arc<Inventory>,
@@ -230,7 +228,7 @@ fn the_timeline_runs_from_phishing_to_ransomware() {
     for pair in evidence.windows(2) {
         assert!(pair[0].timestamp <= pair[1].timestamp);
     }
-    // Every piece of evidence must say which detector cited it.
+
     assert!(evidence.iter().all(|e| !e.cited_by.is_empty()));
 }
 
@@ -306,7 +304,7 @@ fn blast_radius_distinguishes_confirmed_from_reachable() {
         "reachable and potential assets must be shown separately"
     );
 
-    // The patient database is confirmed, not merely reachable.
+
     let patient_db = blast
         .assets
         .iter()
@@ -325,7 +323,7 @@ fn a_lone_low_grade_signal_never_becomes_an_incident() {
     }));
     let mut generator = TelemetryGenerator::new(inventory, 3);
 
-    // Noise only: real low-severity signals, no story behind them.
+
     let run = pipeline(&generator.noise_batch(20_000, now));
 
     assert!(

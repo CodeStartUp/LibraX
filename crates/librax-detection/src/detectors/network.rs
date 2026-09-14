@@ -3,10 +3,7 @@ use librax_types::{EventCategory, SecuritySignal, Severity, ThreatReputation};
 use crate::engine::{DetectionContext, Detector};
 use crate::support::{attr_num, attr_str, entities_of, ratio, signal};
 
-/// Beaconing and traffic to known-bad infrastructure.
-///
-/// Regularity is the interesting part: a machine that phones home every 62
-/// seconds with almost no variance is not a person browsing the web.
+
 pub struct CommandAndControlDetector;
 
 const C2_ID: &str = "c2_connection";
@@ -32,7 +29,7 @@ impl Detector for CommandAndControlDetector {
             let connections = attr_num(event, "connection_count");
             let mean = attr_num(event, "interval_seconds_mean");
             let stddev = attr_num(event, "interval_seconds_stddev");
-            // Coefficient of variation: low means machine-timed, not human.
+
             let regular = connections >= 10.0
                 && mean > 0.0
                 && stddev >= 0.0
@@ -101,7 +98,7 @@ impl Detector for CommandAndControlDetector {
     }
 }
 
-/// Internal reconnaissance, read from flow summaries rather than packets.
+
 pub struct NetworkDiscoveryDetector;
 
 const SCAN_ID: &str = "network_discovery";
@@ -178,10 +175,7 @@ impl Detector for NetworkDiscoveryDetector {
     }
 }
 
-/// Volumetric denial of service, reported as one aggregated signal.
-///
-/// The point of this detector is what it does *not* do: a million connections
-/// produce a single signal, not a million alerts.
+
 pub struct VolumetricDetector;
 
 const DDOS_ID: &str = "network_volume_anomaly";
@@ -244,10 +238,7 @@ impl Detector for VolumetricDetector {
     }
 }
 
-/// Low-grade blocked outbound traffic.
-///
-/// This is the alert-fatigue baseline: real, low-confidence, deliberately left
-/// unmapped to ATT&CK, and the thing prioritisation has to keep out of the way.
+
 pub struct BlockedOutboundDetector;
 
 const BLOCKED_ID: &str = "blocked_outbound_unproven_host";
@@ -277,8 +268,8 @@ impl Detector for BlockedOutboundDetector {
                     0.30,
                     entities_of(event),
                     vec![event.event_id.clone()],
-                    // No technique claimed: a blocked connection is not evidence
-                    // of a technique, and inventing one would be dishonest.
+
+
                     Vec::new(),
                     format!(
                         "Perimeter refused {} -> {destination}. No reputation data supports \

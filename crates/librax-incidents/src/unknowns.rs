@@ -1,10 +1,7 @@
 use librax_enrichment::Inventory;
 use librax_types::{CanonicalEvent, SecuritySignal};
 
-/// What this incident has *not* established.
-///
-/// Derived from the evidence rather than written by hand, so the list shrinks as
-/// the picture improves instead of becoming stale boilerplate.
+
 pub fn derive(
     signals: &[SecuritySignal],
     events: &[CanonicalEvent],
@@ -15,7 +12,7 @@ pub fn derive(
 
     let fired = |detector: &str| signals.iter().any(|s| s.detector_id == detector);
 
-    // Staging without an observed transfer: the data may or may not have left.
+
     let outbound_transfer = events.iter().any(|e| {
         e.attributes
             .get("bytes_out")
@@ -30,7 +27,7 @@ pub fn derive(
         );
     }
 
-    // An encoded command was seen, not read.
+
     if events.iter().any(|e| {
         e.command_line()
             .is_some_and(|c| c.to_ascii_lowercase().contains("-enc"))
@@ -42,7 +39,7 @@ pub fn derive(
         );
     }
 
-    // Ransomware preparation is not ransomware detonation.
+
     if fired("ransomware_indicator") {
         let encrypted = events.iter().any(|e| {
             e.attributes
@@ -59,7 +56,7 @@ pub fn derive(
         }
     }
 
-    // Blind spots are part of the picture.
+
     let (covered, expected, percent) = inventory.edr_coverage();
     if covered < expected {
         unknowns.push(format!(
@@ -86,7 +83,7 @@ pub fn derive(
         ));
     }
 
-    // Attribution is not something this system can establish.
+
     if signals.iter().any(|s| s.detector_id == "c2_connection") {
         unknowns.push(
             "The operator behind the command-and-control infrastructure is unidentified. \

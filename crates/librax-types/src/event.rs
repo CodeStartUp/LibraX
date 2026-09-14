@@ -6,7 +6,7 @@ use serde_json::Value;
 
 use crate::entity::EntityRef;
 
-/// Shared severity ladder. Ordered so `Critical` is always the maximum.
+
 #[derive(
     Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,
 )]
@@ -21,7 +21,7 @@ pub enum Severity {
 }
 
 impl Severity {
-    /// Normalised 0.0-1.0 weight used by the scoring code.
+
     pub fn weight(self) -> f32 {
         match self {
             Severity::Info => 0.10,
@@ -32,7 +32,7 @@ impl Severity {
         }
     }
 
-    /// Maps a 0-100 risk score onto the ladder the UI colours by.
+
     pub fn from_score(score: f32) -> Self {
         match score {
             s if s >= 90.0 => Severity::Critical,
@@ -54,7 +54,7 @@ impl Severity {
     }
 }
 
-/// Coarse grouping used by the timeline source filters in the UI.
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum SourceDomain {
@@ -68,7 +68,7 @@ pub enum SourceDomain {
     Other,
 }
 
-/// The telemetry system an event originated from.
+
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum SourceType {
@@ -126,7 +126,7 @@ impl SourceType {
         }
     }
 
-    /// Every source LibraX ingests in the demo environment.
+
     pub fn all() -> &'static [SourceType] {
         &[
             SourceType::ActiveDirectory,
@@ -146,7 +146,7 @@ impl SourceType {
     }
 }
 
-/// OCSF-inspired classification of what an event describes.
+
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum EventCategory {
@@ -165,19 +165,18 @@ pub enum EventCategory {
     Unknown,
 }
 
-/// What a connector hands to the normalizer: an opaque vendor payload plus
-/// enough envelope metadata to trace it back to its origin.
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RawEvent {
     pub raw_id: String,
     pub source_type: SourceType,
-    /// Connector instance identifier, e.g. `edr-campus-04`.
+
     pub source_id: String,
     pub received_at: DateTime<Utc>,
     pub payload: Value,
 }
 
-/// One side of a network conversation.
+
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct NetworkEndpoint {
     pub ip: Option<String>,
@@ -196,7 +195,7 @@ impl NetworkEndpoint {
     }
 }
 
-/// Process detail for endpoint telemetry.
+
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct ProcessContext {
     pub name: String,
@@ -205,13 +204,13 @@ pub struct ProcessContext {
     pub parent_name: Option<String>,
     pub hash_sha256: Option<String>,
     pub hash_md5: Option<String>,
-    /// Code-signing state, which is what separates an abused system tool from a
-    /// dropped binary carrying the same name.
+
+
     pub signed: Option<bool>,
     pub signer: Option<String>,
 }
 
-/// Reputation verdict attached during enrichment.
+
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ThreatReputation {
@@ -222,29 +221,25 @@ pub enum ThreatReputation {
     Malicious,
 }
 
-/// Business and identity context added by `librax-enrichment`.
+
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct Enrichment {
     pub department: Option<String>,
     pub hospital: Option<String>,
     pub asset_role: Option<String>,
-    /// 0-100. Drives the business-impact half of the risk score.
+
     pub asset_criticality: Option<u8>,
-    /// 0-100. Patient data pushes this high.
+
     pub data_sensitivity: Option<u8>,
     pub privileged_account: bool,
     pub service_account: bool,
     pub source_reputation: ThreatReputation,
     pub destination_reputation: ThreatReputation,
-    /// Suppresses risk when the activity coincides with planned maintenance.
+
     pub maintenance_window: bool,
 }
 
-/// The single event model every source converges on.
-///
-/// Convenience accessors below expose the flat projection
-/// (`user`, `host_name`, `src_ip`, ...) that detectors and the API use, so no
-/// second event model is ever needed.
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CanonicalEvent {
     pub event_id: String,
@@ -252,7 +247,7 @@ pub struct CanonicalEvent {
     pub source_type: SourceType,
     pub source_id: String,
     pub category: EventCategory,
-    /// Short verb phrase, e.g. `process_created`, `logon_success`.
+
     pub activity: String,
 
     pub principal: Option<EntityRef>,
@@ -264,7 +259,7 @@ pub struct CanonicalEvent {
     pub target: Option<EntityRef>,
 
     pub severity: Severity,
-    /// Points back at the originating `RawEvent` so evidence stays traceable.
+
     pub raw_reference: Option<String>,
     pub message: String,
     pub attributes: HashMap<String, Value>,
@@ -308,7 +303,7 @@ impl CanonicalEvent {
         self.attributes.get(key)?.as_f64()
     }
 
-    /// Every entity this event mentions, for entity resolution and correlation.
+
     pub fn entities(&self) -> Vec<EntityRef> {
         let mut out = Vec::new();
         for slot in [&self.principal, &self.host, &self.target] {

@@ -5,8 +5,7 @@ use librax_types::{MitreTechniqueRef, Tactic};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-/// Shipped dataset. Replaceable at runtime, so upgrading ATT&CK is a data change
-/// rather than a code change.
+
 const EMBEDDED: &str = include_str!("../data/techniques.json");
 
 #[derive(Debug, Error)]
@@ -34,7 +33,7 @@ struct Dataset {
     techniques: Vec<Technique>,
 }
 
-/// Technique lookup, keyed by ATT&CK ID.
+
 #[derive(Debug, Clone)]
 pub struct MitreCatalog {
     dataset: String,
@@ -49,7 +48,7 @@ impl Default for MitreCatalog {
 }
 
 impl MitreCatalog {
-    /// The dataset compiled into the binary, so the demo never needs network access.
+
     pub fn embedded() -> Self {
         Self::from_json(EMBEDDED).expect("embedded ATT&CK dataset must be valid")
     }
@@ -71,7 +70,7 @@ impl MitreCatalog {
         Self::from_json(&std::fs::read_to_string(path)?)
     }
 
-    /// Loads an override dataset if one is configured, otherwise the embedded set.
+
     pub fn load(path: Option<&str>) -> Self {
         match path {
             Some(path) => match Self::from_path(path) {
@@ -108,9 +107,7 @@ impl MitreCatalog {
         self.techniques.get(technique_id)
     }
 
-    /// Builds a validated reference, or `None` if the catalog has never heard of
-    /// this technique. Callers treat `None` as "unmapped", never as a licence to
-    /// make something up.
+
     pub fn reference(
         &self,
         technique_id: &str,
@@ -128,8 +125,7 @@ impl MitreCatalog {
         })
     }
 
-    /// As [`Self::reference`], but pinning the tactic when a technique spans
-    /// several and the observed behaviour tells us which one applies.
+
     pub fn reference_as(
         &self,
         technique_id: &str,
@@ -155,8 +151,7 @@ impl MitreCatalog {
         })
     }
 
-    /// Keeps only references the catalog recognises, refreshing their names, and
-    /// reports the IDs it rejected so the UI can show them as unmapped.
+
     pub fn validate(&self, refs: Vec<MitreTechniqueRef>) -> (Vec<MitreTechniqueRef>, Vec<String>) {
         let mut kept = Vec::new();
         let mut unmapped = Vec::new();
@@ -215,7 +210,7 @@ mod tests {
     #[test]
     fn wrong_tactic_for_technique_is_refused() {
         let catalog = MitreCatalog::embedded();
-        // PowerShell is Execution, never Impact.
+
         assert!(
             catalog
                 .reference_as("T1059.001", Tactic::Impact, 0.9, "wrong tactic")

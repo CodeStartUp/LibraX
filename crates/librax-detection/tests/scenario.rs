@@ -1,8 +1,4 @@
-//! End-to-end guard over normalize -> enrich -> detect.
-//!
-//! This is the test that keeps the simulator and the detectors honest with each
-//! other: if a payload field is renamed on one side, the chain stops producing
-//! eleven signals and this fails.
+
 
 use std::collections::HashSet;
 use std::sync::Arc;
@@ -41,10 +37,7 @@ fn chain_signals() -> Vec<SecuritySignal> {
     detect(&scenario::attack_chain(Utc::now()))
 }
 
-/// The launcher advertises what each playbook should produce, and the console
-/// shows that list to the analyst before they launch it. A payload written in one
-/// crate against field names the parser does not read would quietly break that
-/// promise -- which is exactly how imaging retrievals went undetected.
+
 #[test]
 fn every_playbook_raises_the_detections_it_advertises() {
     let inventory = small_inventory();
@@ -216,7 +209,7 @@ fn background_noise_produces_no_serious_signals() {
         signals.iter().all(|s| s.severity <= Severity::Low),
         "noise must never manufacture a serious signal"
     );
-    // The low-grade ones are the alert-fatigue baseline the engine has to filter.
+
     assert!(
         signals.len() < noise.len() / 20,
         "{} signals from {} events is too noisy",

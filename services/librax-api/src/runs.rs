@@ -1,10 +1,4 @@
-//! Records of attacks played against the synthetic estate.
-//!
-//! A run is how the console stops being a canned demo: the analyst launches an
-//! attack, the events arrive over time at the tempo the playbook describes, and
-//! this record tracks how far through it is. The run also carries the incidents
-//! it produced, so the launcher can answer the only question that matters --
-//! did correlation actually notice?
+
 
 use chrono::{DateTime, Utc};
 use librax_types::Severity;
@@ -13,9 +7,9 @@ use serde::Serialize;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum RunStatus {
-    /// Events are still arriving.
+
     Running,
-    /// Every event has been delivered.
+
     Complete,
 }
 
@@ -44,15 +38,15 @@ pub struct AttackRun {
 
     pub events_total: usize,
     pub events_delivered: usize,
-    /// Playback multiplier. `1` is the playbook's own tempo; `0` means the whole
-    /// attack was delivered at once.
+
+
     pub speed: f64,
 
-    /// Detections raised by the events this run delivered.
+
     pub signals_raised: Vec<String>,
-    /// Incidents those detections were correlated into.
+
     pub incident_ids: Vec<String>,
-    /// Event ids this run produced, so the run is traceable to its evidence.
+
     pub event_ids: Vec<String>,
 }
 

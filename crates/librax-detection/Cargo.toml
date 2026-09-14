@@ -17,3 +17,5 @@ tracing.workspace = true
 librax-connectors.workspace = true
 librax-enrichment.workspace = true
 librax-normalizer.workspace = true
+chrono.workspace = true
+serde_json.workspace = true

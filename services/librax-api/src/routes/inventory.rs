@@ -7,7 +7,7 @@ use crate::state::SharedState;
 #[derive(Debug, Deserialize)]
 pub struct AssetQuery {
     pub hospital: Option<String>,
-    /// Only assets at or above this criticality.
+
     pub min_criticality: Option<u8>,
     pub limit: Option<usize>,
 }
@@ -21,7 +21,7 @@ pub struct AssetView {
     pub hospital: String,
     pub ip: String,
     pub criticality: u8,
-    /// Drives the regulated-data contribution to business impact.
+
     pub data_sensitivity: u8,
     pub edr_covered: bool,
 }
@@ -33,7 +33,7 @@ pub struct AssetsResponse {
     pub assets: Vec<AssetView>,
 }
 
-/// The asset inventory, most critical first.
+
 pub async fn assets(
     State(state): State<SharedState>,
     Query(query): Query<AssetQuery>,
@@ -171,7 +171,7 @@ pub async fn hospitals(State(state): State<SharedState>) -> Json<HospitalsRespon
             .hospitals
             .iter()
             .map(|hospital| {
-                // Assets record the hospital by name, not by id.
+
                 let at_site = || {
                     inventory
                         .assets

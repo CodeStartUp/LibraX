@@ -1,4 +1,4 @@
-//! Response simulation, and the guarantees around it.
+
 
 use chrono::Utc;
 use librax_graph::{AttackGraph, GraphNode};
@@ -27,8 +27,7 @@ fn node(kind: EntityKind, name: &str, external: bool) -> GraphNode {
     }
 }
 
-/// An incident shaped like the demo intrusion: signal ids embed the detector,
-/// which is how playbooks decide whether they apply.
+
 fn intrusion() -> (Incident, AttackGraph) {
     let now = Utc::now();
 
@@ -52,6 +51,7 @@ fn intrusion() -> (Incident, AttackGraph) {
         },
         blast_radius: BlastRadius::default(),
         mitre_techniques: Vec::new(),
+        peak_signal_severity: Severity::Info,
         unknowns: vec!["Exfiltration is unconfirmed.".into()],
         first_seen: now,
         last_seen: now,
@@ -109,7 +109,7 @@ fn recommendations_cover_containment_of_every_kind_of_target() {
         );
     }
 
-    // Sorted by confidence, and every one justified.
+
     for pair in actions.windows(2) {
         assert!(pair[0].confidence >= pair[1].confidence);
     }

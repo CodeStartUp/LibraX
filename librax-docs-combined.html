@@ -1,0 +1,1737 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>LibraX — Complete Technical Architecture & Design Document</title>
+    <style>
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+@page {
+    size: A4;
+    margin: 20mm 16mm 20mm 16mm;
+}
+
+body {
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 10.5pt;
+    line-height: 1.55;
+    color: #1e293b;
+    background: #ffffff;
+    margin: 0;
+    padding: 0;
+}
+
+.cover-page {
+    page-break-after: always;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 80vh;
+    padding: 40px 0;
+}
+
+.cover-title {
+    font-size: 32pt;
+    font-weight: 800;
+    color: #0f172a;
+    line-height: 1.15;
+    margin-bottom: 12px;
+    letter-spacing: -0.02em;
+}
+
+.cover-subtitle {
+    font-size: 15pt;
+    font-weight: 600;
+    color: #2563eb;
+    margin-bottom: 24px;
+}
+
+.cover-meta {
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 2px solid #e2e8f0;
+    font-size: 10pt;
+    color: #64748b;
+}
+
+.cover-meta p {
+    margin: 4px 0;
+}
+
+.section-divider {
+    page-break-before: always;
+}
+
+h1 {
+    font-size: 20pt;
+    font-weight: 800;
+    color: #0f172a;
+    margin-top: 24pt;
+    margin-bottom: 10pt;
+    border-bottom: 1.5pt solid #2563eb;
+    padding-bottom: 4pt;
+}
+
+h2 {
+    font-size: 14pt;
+    font-weight: 700;
+    color: #1e293b;
+    margin-top: 18pt;
+    margin-bottom: 6pt;
+}
+
+h3 {
+    font-size: 11.5pt;
+    font-weight: 700;
+    color: #334155;
+    margin-top: 14pt;
+    margin-bottom: 4pt;
+}
+
+p, li {
+    color: #334155;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 14pt 0;
+    font-size: 9pt;
+}
+
+table th {
+    background-color: #f1f5f9;
+    color: #0f172a;
+    font-weight: 700;
+    text-align: left;
+    padding: 6pt 8pt;
+    border: 1px solid #cbd5e1;
+}
+
+table td {
+    padding: 5pt 8pt;
+    border: 1px solid #e2e8f0;
+    vertical-align: top;
+}
+
+table tr:nth-child(even) td {
+    background-color: #f8fafc;
+}
+
+code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9pt;
+    background-color: #f1f5f9;
+    color: #0f172a;
+    padding: 1pt 4pt;
+    border-radius: 3px;
+    border: 1px solid #e2e8f0;
+}
+
+pre {
+    background-color: #0f172a;
+    color: #f8fafc;
+    padding: 10pt 12pt;
+    border-radius: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8.5pt;
+    line-height: 1.45;
+    overflow-x: auto;
+    margin: 12pt 0;
+}
+
+pre code {
+    background-color: transparent;
+    color: inherit;
+    padding: 0;
+    border: none;
+}
+
+blockquote {
+    border-left: 3.5pt solid #2563eb;
+    background-color: #eff6ff;
+    padding: 8pt 14pt;
+    margin: 12pt 0;
+    color: #1e40af;
+    font-size: 9.5pt;
+    border-radius: 0 4px 4px 0;
+}
+
+hr {
+    border: none;
+    border-top: 1px solid #e2e8f0;
+    margin: 18pt 0;
+}
+</style>
+</head>
+<body>
+    
+    <div class="cover-page">
+        <div class="cover-title">LibraX SOC Platform</div>
+        <div class="cover-subtitle">Autonomous Alert Correlation, Evidence Graph & Threat Prioritization Engine</div>
+        <p style="font-size: 11pt; color: #475569; max-width: 650px;">
+            Complete Technical Specification, Mathematical Risk Formulas, Detection Algorithms, Active Directory Lab Architecture, and MITRE ATT&CK Matrix.
+        </p>
+        <div class="cover-meta">
+            <p><strong>Platform:</strong> High-Performance Distributed Rust Core (17 Workspace Crates)</p>
+            <p><strong>Interface:</strong> React 18 / TypeScript High-Density SOC Analyst Console</p>
+            <p><strong>Lab Environment:</strong> Real Active Directory Domain Controller (Samba 4) & Automated Attack Runner</p>
+            <p><strong>Document Version:</strong> 1.0.0 (Production Release)</p>
+        </div>
+    </div>
+    <div class=""><h1>LibraX — Autonomous SOC &amp; Security Correlation Platform</h1>
+<p><strong>LibraX</strong> is an evidence-driven, high-throughput security correlation and autonomous response platform designed for critical infrastructure and enterprise environments. It ingests high-volume disparate telemetry, normalizes events across multi-vendor formats, evaluates stateful and stateless threat detectors, constructs an evidence graph across identities and hosts, aggregates signals into contextual incidents, scores multi-dimensional risk, and provides automated, transparent incident briefings and safe containment playbooks.</p>
+<hr />
+<pre><code>[Architecture Flowchart Diagram]
+graph LR
+    subgraph Ingestion[&quot;1. Telemetry Ingestion&quot;]
+        AD[&quot;Active Directory&quot;]
+        EDR[&quot;EDR / Sysmon&quot;]
+        FW[&quot;Firewalls / Network&quot;]
+        PAM[&quot;PAM / Identity&quot;]
+        PACS[&quot;Medical PACS&quot;]
+    end
+
+    subgraph CoreEngine[&quot;2. LibraX Core Pipeline (Rust)&quot;]
+        NORM[&quot;librax-normalizer&lt;br/&gt;Raw -&gt; Canonical&quot;]
+        DET[&quot;librax-detection&lt;br/&gt;Rules &amp; MITRE ATT&amp;CK&quot;]
+        GRAPH[&quot;librax-graph &amp; entities&lt;br/&gt;Entity Graph &amp; Mesh&quot;]
+        CORR[&quot;librax-correlation&lt;br/&gt;Sliding Temporal Windows&quot;]
+        RISK[&quot;librax-risk&lt;br/&gt;Asset &amp; Impact Multipliers&quot;]
+        AI[&quot;librax-ai &amp; incidents&lt;br/&gt;Provenance Briefings&quot;]
+    end
+
+    subgraph Output[&quot;3. Autonomous Operations&quot;]
+        API[&quot;Axum API :8080&quot;]
+        UI[&quot;React SOC UI :3000&quot;]
+        RESP[&quot;librax-response&lt;br/&gt;Simulation &amp; Approval&quot;]
+    end
+
+    Ingestion --&gt; NORM
+    NORM --&gt; DET
+    DET --&gt; GRAPH
+    GRAPH --&gt; CORR
+    CORR --&gt; RISK
+    RISK --&gt; AI
+    AI --&gt; API
+    API --&gt; UI
+    UI --&gt; RESP
+</code></pre>
+<hr />
+<h2>Core Engineering Principles</h2>
+<h3>1. Zero Hallucination &amp; Provable Evidence</h3>
+<p>Every claim in a LibraX incident briefing cites the exact raw event identifiers that establish it. Claims are strictly categorized into <strong>Facts</strong> (supported by cited log evidence), <strong>Inferences</strong> (logical deductions based on attack progression), and <strong>Key Unknowns</strong> (missing telemetry due to blind spots or stealth).</p>
+<h3>2. Context-Driven Correlation Over Time-Proximity</h3>
+<p>Proximity in time is <strong>never</strong> sufficient on its own to merge alerts. Unrelated alerts occurring within the same second remain isolated unless linked by substantive context: shared identity, target host, network address socket, process hash, or causal ATT&amp;CK progression.</p>
+<h3>3. Transparent, Multi-Dimensional Risk</h3>
+<p>Risk scores (0–100) are never arbitrary single numbers. They are calculated dynamically by separating:
+- <strong>Threat Confidence:</strong> Rigor and count of independent detection signals.
+- <strong>Asset Criticality:</strong> Tier-1 Domain Controllers, EHR databases, and PACS diagnostic imaging machines.
+- <strong>Blast Radius:</strong> Count of reachable enterprise assets and patient-impact multipliers.</p>
+<h3>4. Non-Destructive Response Simulation</h3>
+<p>Autonomous response playbooks (endpoint isolation, credential revocation, firewall IP blocking) execute in <strong>simulation mode</strong> by default, modeling containment efficacy and blast radius before requiring Tier-2 named human approval for high-impact actions.</p>
+<hr />
+<h2>Technology Stack</h2>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Technologies &amp; Frameworks</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Core Engine</strong></td>
+<td><strong>Rust (2024 Edition, 1.85+)</strong></td>
+<td>17-member workspace using <code>Axum 0.8</code>, <code>Tokio</code>, <code>Petgraph</code>, <code>DashMap</code>, <code>Chrono</code>, <code>Serde</code></td>
+</tr>
+<tr>
+<td><strong>Frontend UI</strong></td>
+<td><strong>TypeScript 5.7, React 18, Vite 6</strong></td>
+<td>High-density SOC console with interactive SVG Attack Graph, live telemetry stream, and response controls</td>
+</tr>
+<tr>
+<td><strong>Log Ingest</strong></td>
+<td><strong>Python 3.10+, Requests, Regex</strong></td>
+<td>Zero-latency Samba JSON audit log shipper with DRSUAPI/Kerberos parsing</td>
+</tr>
+<tr>
+<td><strong>Attack Lab</strong></td>
+<td><strong>Docker &amp; Docker Compose</strong></td>
+<td>Isolated <code>172.30.0.0/24</code> subnet hosting Samba 4 AD DC, Impacket adversary runner, and log shippers</td>
+</tr>
+<tr>
+<td><strong>Offensive Tools</strong></td>
+<td><strong>Impacket, Smbclient, Kerberos</strong></td>
+<td>Real password spraying, Kerberoasting, AS-REP roasting, DCSync, and SMB lateral movement</td>
+</tr>
+<tr>
+<td><strong>Documentation</strong></td>
+<td><strong>Python MkDocs &amp; Material Theme</strong></td>
+<td>Full searchable architectural documentation with interactive Mermaid diagrams</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>Navigation &amp; Deep Dives</h2>
+<ul>
+<li><a href="architecture/overview.md"><strong>System Architecture &amp; Pipeline</strong></a> — High-level architecture, event flow lifecycle, and data models.</li>
+<li><a href="architecture/crates.md"><strong>Rust Workspace &amp; Crates</strong></a> — Exhaustive review of all 17 crates and services in the workspace.</li>
+<li><a href="ingestion/normalizer.md"><strong>Log Normalizer &amp; Parsers</strong></a> — How raw logs are normalized into canonical schema.</li>
+<li><a href="detection/detectors.md"><strong>Detection Mesh &amp; ATT&amp;CK</strong></a> — Stateful and stateless detection algorithms.</li>
+<li><a href="correlation/graph.md"><strong>Evidence Graph &amp; Correlation</strong></a> — Graph algorithms, temporal clustering, and blast radius calculation.</li>
+<li><a href="ai/briefings.md"><strong>AI Briefing Synthesis</strong></a> — Deterministic, citation-backed natural language briefing generation.</li>
+<li><a href="lab/docker-architecture.md"><strong>Docker Lab &amp; Active Directory</strong></a> — Live lab topology, Samba DC configuration, and adversary playbooks.</li>
+<li><a href="guides/getting-started.md"><strong>Getting Started &amp; Runbook</strong></a> — Setup, local build, test suite execution, and verification.</li>
+</ul></div><div class="section-divider"><h1>System Architecture &amp; Pipeline</h1>
+<p>This document details the end-to-end telemetry lifecycle in LibraX, from raw multi-source ingestion to interactive analyst presentation.</p>
+<hr />
+<h2>High-Level Architecture</h2>
+<p>LibraX executes as a high-performance, concurrent, memory-efficient pipeline designed to process tens of thousands of raw events per second with sub-millisecond detection latency.</p>
+<pre><code>[Architecture Flowchart Diagram]
+flowchart TD
+    subgraph Sources[&quot;Telemetry Sources&quot;]
+        S1[&quot;Active Directory / Samba&quot;]
+        S2[&quot;EDR Endpoints&quot;]
+        S3[&quot;Perimeter Firewalls&quot;]
+        S4[&quot;VPN / IdP / PAM&quot;]
+        S5[&quot;Medical Systems / PACS&quot;]
+    end
+
+    subgraph Normalization[&quot;Ingestion &amp; Normalization Layer&quot;]
+        API_INGEST[&quot;HTTP POST /api/v1/events&quot;]
+        PARSERS[&quot;librax-normalizer&lt;br/&gt;Parser Dispatcher&quot;]
+        GEO[&quot;librax-enrichment&lt;br/&gt;GeoIP, ASN &amp; Threat Intel&quot;]
+        NORM_EVT[&quot;NormalizedEvent Stream&quot;]
+    end
+
+    subgraph Detection[&quot;Detection Mesh&quot;]
+        ENG[&quot;librax-detection&lt;br/&gt;Detector Registry&quot;]
+        RULES[&quot;Stateful &amp; Stateless Detectors&quot;]
+        SIGNALS[&quot;SecuritySignal (MITRE ATT&amp;CK)&quot;]
+    end
+
+    subgraph Correlation[&quot;Graph &amp; Correlation Engine&quot;]
+        ENT[&quot;librax-entities&lt;br/&gt;Canonical Entity Resolution&quot;]
+        GRAPH[&quot;librax-graph&lt;br/&gt;Entity-Signal DAG&quot;]
+        CORR[&quot;librax-correlation&lt;br/&gt;Sliding Temporal Windows&quot;]
+        CLUSTERS[&quot;Correlated Incident Candidates&quot;]
+    end
+
+    subgraph RiskAndAI[&quot;Risk Scoring &amp; AI Briefing&quot;]
+        RISK[&quot;librax-risk&lt;br/&gt;Asset Criticality &amp; Blast Radius&quot;]
+        INC_BUILD[&quot;librax-incidents&lt;br/&gt;Incident State Machine&quot;]
+        AI_BRIEF[&quot;librax-ai&lt;br/&gt;Deterministic Citation Engine&quot;]
+    end
+
+    subgraph Delivery[&quot;Delivery &amp; Action&quot;]
+        AXUM[&quot;Axum REST &amp; WebSocket Engine&quot;]
+        REACT[&quot;React 18 Single-Page App&quot;]
+        RESP[&quot;librax-response&lt;br/&gt;Containment Simulator&quot;]
+    end
+
+    Sources --&gt; API_INGEST
+    API_INGEST --&gt; PARSERS
+    PARSERS --&gt; GEO
+    GEO --&gt; NORM_EVT
+    NORM_EVT --&gt; ENG
+    ENG --&gt; RULES
+    RULES --&gt; SIGNALS
+    SIGNALS --&gt; ENT
+    ENT --&gt; GRAPH
+    GRAPH --&gt; CORR
+    CORR --&gt; CLUSTERS
+    CLUSTERS --&gt; RISK
+    RISK --&gt; INC_BUILD
+    INC_BUILD --&gt; AI_BRIEF
+    AI_BRIEF --&gt; AXUM
+    AXUM --&gt; REACT
+    REACT --&gt; RESP
+</code></pre>
+<hr />
+<h2>Telemetry Lifecycle: Step-by-Step</h2>
+<h3>Step 1: Ingestion (<code>POST /api/v1/events</code>)</h3>
+<ol>
+<li>Telemetry arrives over HTTP POST as JSON batches containing <code>RawEvent</code> structs.</li>
+<li>The endpoint checks payload schema, source identifiers, and timestamps.</li>
+<li>Counters in <code>AppState</code> track <code>events_received</code>, <code>events_retained</code>, and ingestion rates.</li>
+</ol>
+<h3>Step 2: Normalization &amp; Field Extraction (<code>librax-normalizer</code>)</h3>
+<ol>
+<li>The <code>Normalizer</code> routes raw events to specialized parsers based on <code>source_type</code> (e.g., <code>active_directory</code>, <code>edr</code>, <code>firewall</code>, <code>pacs</code>).</li>
+<li>Timestamps are parsed into UTC <code>DateTime&lt;Utc&gt;</code>.</li>
+<li>Specialized regex patterns extract usernames, source/destination IPv4/IPv6 addresses, process paths, command lines, hashes (SHA256, MD5), and network ports.</li>
+<li>Output is a strongly typed <code>NormalizedEvent</code>.</li>
+</ol>
+<h3>Step 3: Threat Enrichment (<code>librax-enrichment</code>)</h3>
+<ol>
+<li>External IP addresses are enriched with GeoIP country codes, ASN data, and hosting provider metadata.</li>
+<li>File hashes and domain queries are matched against the internal IOC Threat Feed (<code>IocVerdict</code>: <code>Malicious</code>, <code>Suspicious</code>, <code>Unknown</code>, <code>Benign</code>).</li>
+</ol>
+<h3>Step 4: Multi-Rule Detection (<code>librax-detection</code>)</h3>
+<ol>
+<li>The normalized event stream is evaluated by the detector mesh:</li>
+<li><strong>Stateless Detectors:</strong> Single-event signature matching (e.g., LOLBAS execution, Mimikatz binary hash, known malicious C2 IP connection).</li>
+<li><strong>Stateful Detectors:</strong> Sliding window state trackers (e.g., <code>ad_password_spray</code> tracking failed logins across multiple accounts within a 3-minute window, <code>ad_dcsync</code> tracking replication requests from non-DC hosts).</li>
+<li>Triggered detections yield <code>SecuritySignal</code> instances, tagged with MITRE ATT&amp;CK tactic/technique IDs and evidence arrays.</li>
+</ol>
+<h3>Step 5: Entity Resolution &amp; Graph Construction (<code>librax-entities</code> &amp; <code>librax-graph</code>)</h3>
+<ol>
+<li>Entities mentioned across signals (users, hosts, IP addresses, files, hospitals) are resolved to canonical identities.</li>
+<li>The <code>IncidentGraph</code> models entities and signals as a Directed Acyclic Graph (DAG) with typed edges (<code>ExecutedOn</code>, <code>AuthenticatedAs</code>, <code>Targeted</code>, <code>TraversedNetwork</code>).</li>
+</ol>
+<h3>Step 6: Temporal &amp; Spatial Correlation (<code>librax-correlation</code>)</h3>
+<ol>
+<li>A multi-pass correlation algorithm clusters signals into incident units.</li>
+<li>Scoring checks:</li>
+<li><strong>Temporal Window:</strong> Signals occur within active correlation threshold (default: 45 minutes).</li>
+<li><strong>Substantive Factors:</strong> Common user identity (+0.4), same host (+0.35), network socket overlap (+0.3), shared evidence (+0.4), ATT&amp;CK progression stage (+0.25).</li>
+<li>Clusters meeting minimum score threshold are promoted to Incidents.</li>
+</ol>
+<h3>Step 7: Multi-Dimensional Risk Assessment (<code>librax-risk</code>)</h3>
+<ol>
+<li>Threat severity score ($0–100$) derived from signal severity weights ($W_{\text{critical}}=40, W_{\text{high}}=25, W_{\text{med}}=10$).</li>
+<li>Asset criticality multiplier: Domain Controllers ($2.0\times$), PACS / Surgical Units ($2.5\times$), Workstations ($1.0\times$).</li>
+<li>Blast radius scoring: Number of downstream reachable entities, active Kerberos tickets, and shared network segments.</li>
+</ol>
+<h3>Step 8: Automated Incident Briefing (<code>librax-ai</code>)</h3>
+<ol>
+<li>Synthesizes a structured analyst narrative from graph traversal.</li>
+<li>Every statement is verified against cited event IDs.</li>
+<li>Groups statements into:</li>
+<li><strong>Executive Summary:</strong> Overview of adversary actions and current operational status.</li>
+<li><strong>Confirmed Facts:</strong> Verified log events.</li>
+<li><strong>Key Inferences:</strong> Deduced next steps and persistence mechanisms.</li>
+<li><strong>Investigation Guidance:</strong> Concrete next steps for SOC tier-1/tier-2 responders.</li>
+<li><strong>Recommended Containment Actions:</strong> Targeted host isolations and account locks.</li>
+</ol>
+<h3>Step 9: UI Presentation &amp; Containment Simulation (<code>frontend</code> &amp; <code>librax-response</code>)</h3>
+<ol>
+<li>The React SPA renders the incident queue, blast radius tables, and real-time SVG graph.</li>
+<li>Analysts trigger containment simulation to model business and operational impact before execution.</li>
+</ol></div><div class="section-divider"><h1>Rust Workspace &amp; Crates Deep-Dive</h1>
+<p>The LibraX core engine is implemented in <strong>Rust (2024 edition, 1.85+)</strong> as a modular 17-member workspace. This separation of concerns enforces clean boundaries, deterministic performance, and isolated unit/integration testability.</p>
+<pre><code>crates/
+├── librax-types/         # Common domain primitives and data transfer objects
+├── librax-config/        # Configuration loader (YAML, ENV, CLI flags)
+├── librax-connectors/    # Multi-source log connector definitions &amp; health checks
+├── librax-normalizer/    # Multi-vendor raw log parsers and schema normalization
+├── librax-enrichment/    # GeoIP, ASN, Threat Intel feeds &amp; IOC verdict engine
+├── librax-detection/     # Stateful/stateless detectors &amp; MITRE ATT&amp;CK engine
+├── librax-entities/      # Entity resolution, identity mesh &amp; asset inventory
+├── librax-correlation/   # Sliding window correlator &amp; multi-factor link scoring
+├── librax-graph/         # Petgraph-backed DAG, blast radius &amp; attack chain paths
+├── librax-mitre/         # MITRE ATT&amp;CK Enterprise matrix &amp; tactic progression
+├── librax-risk/          # Multi-dimensional risk &amp; patient safety impact scoring
+├── librax-incidents/     # Incident state machine, lifecycle &amp; builder
+├── librax-response/      # Containment engine, safe simulation &amp; approval gates
+├── librax-storage/       # In-memory and persistent thread-safe storage
+└── librax-ai/            # Deterministic briefing generator &amp; assertion provenance
+services/
+├── librax-api/           # Axum 0.8 HTTP REST API &amp; WebSocket server
+└── librax-simulator/     # Multi-tempo adversary attack replay engine
+</code></pre>
+<hr />
+<h2>Workspace Members Breakdown</h2>
+<h3>1. <code>librax-types</code></h3>
+<ul>
+<li><strong>Purpose:</strong> Foundation crate containing shared domain models.</li>
+<li><strong>Key Structs:</strong></li>
+<li><code>RawEvent</code>: Unparsed telemetry log with source identifier and payload string/JSON.</li>
+<li><code>NormalizedEvent</code>: Strongly-typed event with canonical timestamp, host, user, network sockets, hashes, and message.</li>
+<li><code>SecuritySignal</code>: An alert generated by a detector, including severity, MITRE tags, and cited evidence events.</li>
+<li><code>Incident</code>: An aggregated security incident containing correlated signals, entities, graph, risk scores, and AI briefings.</li>
+<li><code>EntityRef</code>: Canonical entity reference (<code>Host</code>, <code>User</code>, <code>Ip</code>, <code>File</code>, <code>Process</code>, <code>Hospital</code>).</li>
+<li><code>ResponseAction</code>: Containment action specification (<code>IsolateHost</code>, <code>DisableAccount</code>, <code>BlockIp</code>).</li>
+</ul>
+<h3>2. <code>librax-normalizer</code></h3>
+<ul>
+<li><strong>Purpose:</strong> Ingests unformatted raw events and transforms them into standard schema.</li>
+<li><strong>Supported Sources:</strong></li>
+<li><code>active_directory</code> / <code>samba</code>: Windows Security Event IDs (4624, 4625, 4672, 4768, 4769, 4776, 5140, 5145) and Samba JSON/full_audit formats.</li>
+<li><code>edr</code>: Process creation, injection, DLL loads, and script blocks.</li>
+<li><code>firewall</code>: Connection drops, port scans, and egress flows.</li>
+<li><code>pacs</code>: DICOM medical imaging queries, storage transfers, and modality commands.</li>
+<li><code>pam</code> / <code>vpn</code>: Privilege elevation and remote access authentication.</li>
+</ul>
+<h3>3. <code>librax-detection</code></h3>
+<ul>
+<li><strong>Purpose:</strong> Evaluates rules against incoming normalized events.</li>
+<li><strong>Key Features:</strong></li>
+<li><code>Detector</code> Trait: Common interface <code>fn evaluate(&amp;mut self, event: &amp;NormalizedEvent) -&gt; Vec&lt;SecuritySignal&gt;</code>.</li>
+<li>Stateful detection: In-memory sliding windows with automatic TTL expiration.</li>
+<li>Directory heuristics: Special detectors tailored for Active Directory attack chains (Kerberoasting, AS-REP roasting, DCSync, Password Spraying).</li>
+</ul>
+<h3>4. <code>librax-entities</code></h3>
+<ul>
+<li><strong>Purpose:</strong> Disambiguates disparate identifiers across systems into canonical entities.</li>
+<li><strong>Resolution Capabilities:</strong></li>
+<li>Resolves NetBIOS names, FQDNs, and IP addresses to canonical host records.</li>
+<li>Correlates SAMAccountNames, UPNs, and Kerberos principal names to unified user identities.</li>
+<li>Maintains critical healthcare asset registry (Domain Controllers, EHR Servers, CT/MRI modalities).</li>
+</ul>
+<h3>5. <code>librax-correlation</code></h3>
+<ul>
+<li><strong>Purpose:</strong> Correlates independent signals into coherent attack chains.</li>
+<li><strong>Algorithm:</strong></li>
+<li>Maintains active temporal clusters within a configurable sliding window.</li>
+<li>Evaluates multi-factor link contributions:
+    $$\text{Score} = w_{\text{id}} \cdot F_{\text{id}} + w_{\text{host}} \cdot F_{\text{host}} + w_{\text{net}} \cdot F_{\text{net}} + w_{\text{ev}} \cdot F_{\text{ev}} + w_{\text{stage}} \cdot F_{\text{stage}}$$</li>
+<li>Requires at least one <strong>substantive</strong> factor (temporal proximity alone never links).</li>
+</ul>
+<h3>6. <code>librax-graph</code></h3>
+<ul>
+<li><strong>Purpose:</strong> Constructs the structural incident graph and computes graph metrics.</li>
+<li><strong>Key Features:</strong></li>
+<li>Backed by <code>petgraph::graph::DiGraph</code>.</li>
+<li>Computes blast radius, attack entry points, and shortest lateral movement paths.</li>
+<li>Serializes graph nodes and edges for the React SVG HUD.</li>
+</ul>
+<h3>7. <code>librax-risk</code></h3>
+<ul>
+<li><strong>Purpose:</strong> Calculates objective risk ratings ($0–100$) based on threat confidence, critical asset exposure, and blast radius.</li>
+<li><strong>Formula:</strong>
+  $$\text{Risk} = \min\left(100, \left(\text{BaseSeverity} \times \text{AssetWeight} \times \text{BlastMultiplier}\right) + \text{TemporalBonus}\right)$$</li>
+</ul>
+<h3>8. <code>librax-ai</code></h3>
+<ul>
+<li><strong>Purpose:</strong> Generates analyst briefings with zero hallucinations.</li>
+<li><strong>Guarantees:</strong></li>
+<li>Strict assertion provenance: Every statement is labeled as <code>Fact</code> or <code>Inference</code>.</li>
+<li>Direct citations: Every claim contains pointers to the exact <code>event_id</code> values supporting it.</li>
+</ul>
+<h3>9. <code>librax-response</code></h3>
+<ul>
+<li><strong>Purpose:</strong> Proposes and simulates automated containment playbooks.</li>
+<li><strong>Safety Features:</strong></li>
+<li>Non-destructive by default: Simulates actions and predicts operational side-effects.</li>
+<li>Approval Enforcement: High-impact actions require a named analyst signature.</li>
+</ul>
+<h3>10. <code>services/librax-api</code></h3>
+<ul>
+<li><strong>Purpose:</strong> Primary HTTP REST and WebSocket gateway powered by <code>Axum 0.8</code>.</li>
+<li><strong>Endpoints:</strong></li>
+<li><code>/api/v1/dashboard</code>: High-level metrics, reduction funnel, and top active incident.</li>
+<li><code>/api/v1/incidents</code>: Incident listing, graph queries, and detail views.</li>
+<li><code>/api/v1/events</code>: High-speed raw telemetry search and filtering.</li>
+<li><code>/api/v1/sources</code>: Telemetry ingestion pipeline status and health metrics.</li>
+<li><code>/api/v1/attacks</code>: Attack range catalog and campaign execution controls.</li>
+<li><code>/api/v1/intel</code>: Indicator of Compromise (IOC) lookup and feed explorer.</li>
+</ul>
+<h3>11. <code>services/librax-simulator</code></h3>
+<ul>
+<li><strong>Purpose:</strong> Replays full-spectrum adversary campaigns against the engine at controllable playback rates ($10\times, 20\times, 60\times, \text{Burst}$).</li>
+</ul></div><div class="section-divider"><h1>Log Normalizer &amp; Parsers (<code>librax-normalizer</code>)</h1>
+<p>The <code>librax-normalizer</code> crate is the front-line ingest component of LibraX. It converts heterogeneous, vendor-specific raw logs into a standardized, strongly-typed <code>NormalizedEvent</code> schema.</p>
+<hr />
+<h2>Canonical Event Schema (<code>NormalizedEvent</code>)</h2>
+<p>Every incoming log, regardless of origin, is parsed into this canonical structure:</p>
+<pre><code class="language-rust">pub struct NormalizedEvent {
+    pub event_id: String,
+    pub timestamp: DateTime&lt;Utc&gt;,
+    pub source_type: String,       // e.g. &quot;active_directory&quot;, &quot;edr&quot;, &quot;firewall&quot;
+    pub source_id: String,         // e.g. &quot;dc-samba-01&quot;, &quot;fw-perimeter-01&quot;
+    pub category: String,          // e.g. &quot;authentication&quot;, &quot;process&quot;, &quot;network&quot;
+    pub activity: String,          // e.g. &quot;kerberos_tgt_request&quot;, &quot;process_spawn&quot;
+    pub severity: Severity,        // Info, Low, Medium, High, Critical
+    pub user: Option&lt;String&gt;,      // Normalized username (e.g., &quot;jdoe&quot;)
+    pub host: Option&lt;String&gt;,      // Normalized hostname (e.g., &quot;dc01.librax.local&quot;)
+    pub src_ip: Option&lt;IpAddr&gt;,    // Source IPv4/IPv6 socket
+    pub dst_ip: Option&lt;IpAddr&gt;,    // Destination IPv4/IPv6 socket
+    pub process: Option&lt;String&gt;,   // Executable binary path
+    pub command_line: Option&lt;String&gt;, // Full process invocation command
+    pub sha256: Option&lt;String&gt;,    // SHA256 cryptographic hash
+    pub md5: Option&lt;String&gt;,       // MD5 cryptographic hash
+    pub hospital: Option&lt;String&gt;,  // Healthcare facility/campus
+    pub message: String,           // Human-readable summary
+    pub raw: String,               // Original raw payload for audit compliance
+}
+</code></pre>
+<hr />
+<h2>Parser Implementations</h2>
+<h3>1. Active Directory &amp; Samba (<code>parsers/directory.rs</code>)</h3>
+<p>Handles both Windows Security Event logs and Samba 4 JSON audit records (<code>auth_json_audit</code>, <code>authz_json_audit</code>, and <code>full_audit:prefix</code>).</p>
+<pre><code>[Architecture Flowchart Diagram]
+flowchart LR
+    SambaRecord[&quot;Samba JSON / Event ID&quot;]
+    Parser[&quot;ActiveDirectoryParser&quot;]
+    Norm[&quot;NormalizedEvent&quot;]
+
+    SambaRecord --&gt; Parser
+    Parser --&gt; |&quot;Extract Type: Authentication&quot;| Norm
+    Parser --&gt; |&quot;Normalize Client IP&quot;| Norm
+    Parser --&gt; |&quot;Extract Kerberos Service Ticket&quot;| Norm
+    Parser --&gt; |&quot;Extract NTLM Status Code&quot;| Norm
+</code></pre>
+<h4>Monitored Event Types:</h4>
+<ul>
+<li><strong>Kerberos TGT Requests (<code>4768</code> / <code>AS-REQ</code>):</strong> Extracts client address, requested principal, ticket encryption type (identifies weak RC4-HMAC vs AES256 for AS-REP roasting).</li>
+<li><strong>Kerberos Service Ticket Requests (<code>4769</code> / <code>TGS-REQ</code>):</strong> Extracts target SPN (identifies Kerberoasting against service accounts).</li>
+<li><strong>NTLM Authentication Attempts (<code>4776</code> / <code>NTLM-Auth</code>):</strong> Extracts workstation name, target username, and NTLM return code (<code>0xC000006A</code> = bad password, <code>0xC0000064</code> = no such user, <code>0x0</code> = success).</li>
+<li><strong>SMB Tree Connects (<code>full_audit:prefix</code>):</strong> Extracts user, IP, share accessed (<code>ADMIN$</code>, <code>C$</code>, <code>IPC$</code>), and status (<code>ok</code> / <code>fail</code>).</li>
+<li><strong>DRSUAPI Replication Handlers (<code>DsGetNCChanges</code>):</strong> Extracts non-DC source addresses attempting directory secret synchronization (DCSync).</li>
+</ul>
+<h3>2. Endpoint Detection &amp; Response (<code>parsers/edr.rs</code>)</h3>
+<p>Parses process execution telemetry, command line arguments, parent-child process relationships, and file write events.</p>
+<ul>
+<li><strong>Process Creation:</strong> Extracts binary name, PID, parent PID, command line parameters, and process hashes.</li>
+<li><strong>Credential Access Telemetry:</strong> Detects memory read access to <code>lsass.exe</code> or extraction of SAM registry hives.</li>
+<li><strong>LOLBAS Invocation:</strong> Normalizes invocations of <code>powershell.exe</code>, <code>certutil.exe</code>, <code>mshta.exe</code>, <code>rundll32.exe</code>, and <code>vssadmin.exe</code>.</li>
+</ul>
+<h3>3. Medical Imaging &amp; PACS (<code>parsers/pacs.rs</code>)</h3>
+<p>Specialized parser designed for healthcare environments:
+- <strong>DICOM C-ECHO:</strong> Modality ping and connectivity checks.
+- <strong>DICOM C-FIND:</strong> Patient record queries and study search requests.
+- <strong>DICOM C-MOVE / C-STORE:</strong> Image transfer commands to external storage locations (detects patient data exfiltration).</p>
+<h3>4. Perimeter Firewalls &amp; Network (<code>parsers/firewall.rs</code>)</h3>
+<ul>
+<li>Parses standard Syslog and NetFlow formats.</li>
+<li>Normalizes source/destination IP addresses, destination ports, protocols (TCP/UDP/ICMP), and action (<code>ALLOW</code>, <code>DENY</code>, <code>DROP</code>).</li>
+<li>Detects outbound connections to non-standard ports and high-frequency beaconing intervals.</li>
+</ul>
+<hr />
+<h2>Normalization Performance &amp; Benchmarks</h2>
+<ul>
+<li><strong>Throughput:</strong> Over <strong>120,000 events/second</strong> per core in single-threaded microbenchmarks.</li>
+<li><strong>Allocation Efficiency:</strong> Employs zero-copy string slicing (<code>&amp;str</code>) where feasible and reuses string buffers in parser pools.</li>
+<li><strong>Error Handling:</strong> Unparseable logs are routed to <code>events_unsupported</code> counters and retained in raw form for forensics without dropping pipeline throughput.</li>
+</ul></div><div class="section-divider"><h1>Threat Intelligence &amp; Enrichment (<code>librax-enrichment</code>)</h1>
+<p>The <code>librax-enrichment</code> crate augments incoming telemetry with contextual metadata, reputation scores, and threat intelligence before detection evaluation.</p>
+<hr />
+<h2>Indicators of Compromise (IOC) Engine</h2>
+<p>LibraX maintains an in-memory threat intelligence database indexing millions of known malicious artifacts across four primary indicator types:</p>
+<pre><code>[Architecture Flowchart Diagram]
+graph TD
+    IOC[&quot;Incoming Telemetry Artifact&quot;] --&gt; KIND{Indicator Kind}
+    KIND --&gt; |MD5 / SHA256| HASH[&quot;Cryptographic File Hash&quot;]
+    KIND --&gt; |IPv4 / IPv6| IP[&quot;IP Address &amp; ASN&quot;]
+    KIND --&gt; |FQDN / Domain| DOM[&quot;Domain / Hostname&quot;]
+    KIND --&gt; |Binary Name| FILE[&quot;Executable Filename&quot;]
+
+    HASH --&gt; LOOKUP[&quot;Threat Feed Lookup&quot;]
+    IP --&gt; LOOKUP
+    DOM --&gt; LOOKUP
+    FILE --&gt; LOOKUP
+
+    LOOKUP --&gt; VERDICT[&quot;IocVerdict&quot;]
+    VERDICT --&gt; |Malicious| V_MAL[&quot;Malicious (Score: 100)&quot;]
+    VERDICT --&gt; |Suspicious| V_SUS[&quot;Suspicious (Score: 60)&quot;]
+    VERDICT --&gt; |Unknown| V_UNK[&quot;Unknown (Score: 0)&quot;]
+    VERDICT --&gt; |Benign| V_BEN[&quot;Benign / Allowlisted&quot;]
+</code></pre>
+<h3>Indicator Record Schema (<code>IocRecord</code>)</h3>
+<pre><code class="language-rust">pub struct IocRecord {
+    pub kind: IocKind,                 // Md5, Sha256, Ipv4, Domain, File
+    pub value: String,                 // Indicator value (e.g. &quot;185.220.101.47&quot;)
+    pub verdict: IocVerdict,           // Malicious, Suspicious, Unknown, Benign
+    pub threat_name: Option&lt;String&gt;,   // e.g. &quot;CobaltStrike C2&quot;, &quot;LockBit Ransomware&quot;
+    pub malware_family: Option&lt;String&gt;,// e.g. &quot;Mimikatz&quot;, &quot;Conti&quot;, &quot;Qakbot&quot;
+    pub detection_ratio: Option&lt;String&gt;, // e.g. &quot;58/72&quot; AV vendor hits
+    pub signed: Option&lt;bool&gt;,          // Binary digital signature validity
+    pub signer: Option&lt;String&gt;,        // Recognized code signing entity
+    pub categories: Vec&lt;String&gt;,       // MITRE ATT&amp;CK tactic tags
+    pub feeds: Vec&lt;String&gt;,            // Feed sources (e.g. &quot;AbuseIPDB&quot;, &quot;AlienVault&quot;)
+    pub notes: Vec&lt;String&gt;,            // Threat intelligence context
+}
+</code></pre>
+<hr />
+<h2>Enrichment Pipeline</h2>
+<p>When a <code>NormalizedEvent</code> passes through enrichment:</p>
+<ol>
+<li><strong>GeoIP &amp; Autonomous System Number (ASN):</strong></li>
+<li>External IPs are resolved to country codes (e.g. <code>RO</code>, <code>RU</code>, <code>CN</code>, <code>US</code>), ASN IDs (e.g. <code>AS9009 M247 Europe</code>), and network classifications (Residential, Datacenter, Tor Exit Node, Bulletproof Hoster).</li>
+<li><strong>File Reputation &amp; Multi-Engine AV Scoring:</strong></li>
+<li>Hashes (<code>sha256</code>, <code>md5</code>) are queried against the local threat cache.</li>
+<li>Known legitimate administrative tools (e.g. validly signed Microsoft binaries) are tagged to suppress false positives.</li>
+<li><strong>Internal Sighting Cross-Reference:</strong></li>
+<li>Every queried indicator records internal sightings across retained telemetry, allowing instant pivoting from a global threat indicator to all internal endpoints that interacted with it.</li>
+</ol></div><div class="section-divider"><h1>Detection Engine &amp; MITRE ATT&amp;CK (<code>librax-detection</code>)</h1>
+<p>The <code>librax-detection</code> crate is the analytical core that inspects normalized events, matches malicious patterns, and produces structured <code>SecuritySignal</code> alerts aligned with the MITRE ATT&amp;CK framework.</p>
+<hr />
+<h2>The <code>Detector</code> Trait</h2>
+<p>Every rule implements the unified <code>Detector</code> trait:</p>
+<pre><code class="language-rust">pub trait Detector: Send + Sync {
+    /// Unique identifier for this rule (e.g., &quot;ad_kerberoasting&quot;).
+    fn id(&amp;self) -&gt; &amp;'static str;
+
+    /// Human-readable title for generated signals.
+    fn name(&amp;self) -&gt; &amp;'static str;
+
+    /// Primary MITRE ATT&amp;CK technique (e.g., &quot;T1558.003&quot;).
+    fn technique(&amp;self) -&gt; &amp;'static str;
+
+    /// MITRE ATT&amp;CK tactic category (e.g., &quot;Credential Access&quot;).
+    fn tactic(&amp;self) -&gt; &amp;'static str;
+
+    /// Default baseline severity (Low, Medium, High, Critical).
+    fn severity(&amp;self) -&gt; Severity;
+
+    /// Evaluate an incoming event. Returns zero or more SecuritySignals.
+    fn evaluate(&amp;mut self, event: &amp;NormalizedEvent) -&gt; Vec&lt;SecuritySignal&gt;;
+
+    /// Clear stateful in-memory tracking windows.
+    fn reset(&amp;mut self);
+}
+</code></pre>
+<hr />
+<h2>Detection Mesh Overview</h2>
+<p>LibraX organizes its detection library across standard MITRE ATT&amp;CK tactical stages:</p>
+<pre><code>[Architecture Flowchart Diagram]
+graph TD
+    subgraph InitialAccess[&quot;1. Initial Access &amp; Recon&quot;]
+        D_SPRAY[&quot;ad_password_spray&lt;br/&gt;T1110.003 Password Spraying&quot;]
+        D_BRUTE[&quot;ad_brute_force&lt;br/&gt;T1110.001 Brute Force&quot;]
+        D_IMPTRAV[&quot;impossible_travel&lt;br/&gt;T1078 Valid Accounts&quot;]
+    end
+
+    subgraph CredentialAccess[&quot;2. Credential Access&quot;]
+        D_KERB[&quot;ad_kerberoasting&lt;br/&gt;T1558.003 Kerberoasting&quot;]
+        D_ASREP[&quot;ad_asreproast&lt;br/&gt;T1558.004 AS-REP Roasting&quot;]
+        D_DCSYNC[&quot;ad_dcsync&lt;br/&gt;T1003.006 DCSync Replication&quot;]
+        D_LSASS[&quot;credential_dumping_lsass&lt;br/&gt;T1003.001 LSASS Memory&quot;]
+    end
+
+    subgraph ExecutionPrivEsc[&quot;3. Execution &amp; PrivEsc&quot;]
+        D_LOLBAS[&quot;lolbas_execution&lt;br/&gt;T1218 Signed Binary Proxy&quot;]
+        D_UAC[&quot;privilege_escalation_uac&lt;br/&gt;T1548.002 Bypass UAC&quot;]
+        D_SMB[&quot;ad_lateral_movement_smb&lt;br/&gt;T1021.002 SMB / Admin Shares&quot;]
+    end
+
+    subgraph ImpactExfil[&quot;4. Exfiltration &amp; Impact&quot;]
+        D_RANSOM[&quot;ransomware_canary&lt;br/&gt;T1486 Data Encrypted for Impact&quot;]
+        D_PACS[&quot;pacs_bulk_exfiltration&lt;br/&gt;T1567 Exfiltration Over Web Service&quot;]
+        D_DNS[&quot;data_exfiltration_dns&lt;br/&gt;T1048 Exfiltration Over Alt Protocol&quot;]
+        D_C2[&quot;beaconing_c2&lt;br/&gt;T1071 Application Layer Protocol&quot;]
+    end
+
+    InitialAccess --&gt; CredentialAccess
+    CredentialAccess --&gt; ExecutionPrivEsc
+    ExecutionPrivEsc --&gt; ImpactExfil
+</code></pre>
+<hr />
+<h2>Stateless vs. Stateful Detection Algorithms</h2>
+<h3>1. Stateless Detections (Single-Event Signatures)</h3>
+<p>Stateless rules analyze an individual <code>NormalizedEvent</code> in isolation. They have $O(1)$ complexity and zero memory overhead.</p>
+<ul>
+<li><strong>Example: <code>credential_dumping_lsass</code></strong></li>
+<li><strong>Condition:</strong> Process telemetry indicates <code>rundll32.exe comsvcs.dll, MiniDump</code> targeting <code>lsass.exe</code>, or non-system process requesting <code>PROCESS_VM_READ</code> against <code>lsass.exe</code>.</li>
+<li><strong>Output:</strong> Emits Critical <code>SecuritySignal</code> citing event ID and process lineage.</li>
+</ul>
+<h3>2. Stateful Detections (Sliding Window Trackers)</h3>
+<p>Stateful rules track historical event sequences across temporal windows using in-memory ring buffers or hash maps.</p>
+<ul>
+<li><strong>Example: <code>ad_password_spray</code> (<code>T1110.003</code>)</strong></li>
+<li><strong>Algorithm:</strong>
+    <code>Window: 180 seconds (3 minutes)
+    Threshold: Failed logins against &gt;= 5 distinct usernames from a single source IP
+    Data Structure: HashMap&lt;IpAddr, BTreeMap&lt;Username, Vec&lt;Timestamp&gt;&gt;&gt;</code></li>
+<li><strong>Pruning:</strong> Evicts timestamp entries older than window duration.</li>
+<li><strong>Trigger:</strong> When distinct failed accounts from $IP$ exceed threshold, generates High severity signal citing all failed authentication event IDs.</li>
+</ul>
+<hr />
+<h2>Security Signal Output Structure</h2>
+<pre><code class="language-rust">pub struct SecuritySignal {
+    pub signal_id: String,
+    pub detector_id: String,
+    pub title: String,
+    pub severity: Severity,
+    pub tactic: String,
+    pub technique: String,
+    pub timestamp: DateTime&lt;Utc&gt;,
+    pub host: Option&lt;String&gt;,
+    pub user: Option&lt;String&gt;,
+    pub src_ip: Option&lt;IpAddr&gt;,
+    pub dst_ip: Option&lt;IpAddr&gt;,
+    pub evidence: Vec&lt;String&gt;,     // Cited Event IDs
+    pub metadata: HashMap&lt;String, String&gt;,
+}
+</code></pre></div><div class="section-divider"><h1>MITRE ATT&amp;CK Mapping &amp; Matrix (<code>librax-mitre</code>)</h1>
+<p>LibraX natively integrates the <strong>MITRE ATT&amp;CK Enterprise Matrix (v18.1)</strong>. Every detection rule, correlation link, incident briefing, and adversary playback scenario maps directly to specific MITRE tactics and technique IDs.</p>
+<hr />
+<h2>MITRE ATT&amp;CK Enterprise Matrix Mapping</h2>
+<pre><code>[Architecture Flowchart Diagram]
+graph LR
+    subgraph TA0001[&quot;1. Initial Access&quot;]
+        T1566_001[&quot;T1566.001 Spearphishing&quot;]
+        T1078[&quot;T1078 Valid Accounts&quot;]
+    end
+
+    subgraph TA0002[&quot;2. Execution&quot;]
+        T1204_002[&quot;T1204.002 Malicious File&quot;]
+        T1059_001[&quot;T1059.001 PowerShell&quot;]
+    end
+
+    subgraph TA0005[&quot;3. Defense Evasion&quot;]
+        T1027[&quot;T1027 Obfuscated Payloads&quot;]
+    end
+
+    subgraph TA0006[&quot;4. Credential Access&quot;]
+        T1110_003[&quot;T1110.003 Password Spraying&quot;]
+        T1110_001[&quot;T1110.001 Password Guessing&quot;]
+        T1558_003[&quot;T1558.003 Kerberoasting&quot;]
+        T1558_004[&quot;T1558.004 AS-REP Roasting&quot;]
+        T1003_006[&quot;T1003.006 DCSync Secrets Dump&quot;]
+    end
+
+    subgraph TA0007[&quot;5. Discovery&quot;]
+        T1046[&quot;T1046 Network Service Scan&quot;]
+        T1018[&quot;T1018 Remote Host Discovery&quot;]
+        T1087_002[&quot;T1087.002 Domain Account Enum&quot;]
+        T1135[&quot;T1135 Network Share Enum&quot;]
+    end
+
+    subgraph TA0008[&quot;6. Lateral Movement&quot;]
+        T1021_002[&quot;T1021.002 SMB Admin Shares&quot;]
+        T1021_006[&quot;T1021.006 WinRM Remote Mgmt&quot;]
+        T1021[&quot;T1021 Remote Services&quot;]
+    end
+
+    subgraph TA0009[&quot;7. Collection &amp; Staging&quot;]
+        T1213[&quot;T1213 Data Repositories&quot;]
+        T1005[&quot;T1005 Data From Host&quot;]
+        T1074_001[&quot;T1074.001 Local Staging&quot;]
+        T1560_001[&quot;T1560.001 Archive (7-Zip)&quot;]
+    end
+
+    subgraph TA0011[&quot;8. Command &amp; Control&quot;]
+        T1071_001[&quot;T1071.001 Web Protocols (C2)&quot;]
+    end
+
+    subgraph TA0040[&quot;9. Impact&quot;]
+        T1486[&quot;T1486 Data Encryption (Ransomware)&quot;]
+        T1490[&quot;T1490 Inhibit Recovery (VSS Delete)&quot;]
+        T1498[&quot;T1498 Network Denial of Service&quot;]
+    end
+
+    TA0001 --&gt; TA0002
+    TA0002 --&gt; TA0005
+    TA0005 --&gt; TA0006
+    TA0006 --&gt; TA0007
+    TA0007 --&gt; TA0008
+    TA0008 --&gt; TA0009
+    TA0009 --&gt; TA0011
+    TA0011 --&gt; TA0040
+</code></pre>
+<hr />
+<h2>Comprehensive Technique Catalog</h2>
+<table>
+<thead>
+<tr>
+<th>Technique ID</th>
+<th>Technique Name</th>
+<th>MITRE Tactic</th>
+<th>Detector Rule in LibraX</th>
+<th>Triggering Telemetry &amp; Evidence</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong><code>T1566.001</code></strong></td>
+<td>Spearphishing Attachment</td>
+<td>Initial Access</td>
+<td><code>phishing_attachment_malware</code></td>
+<td>Email gateway logs attachment hash matching malicious threat feed</td>
+</tr>
+<tr>
+<td><strong><code>T1204.002</code></strong></td>
+<td>User Execution: Malicious File</td>
+<td>Execution</td>
+<td><code>user_execution_macro</code></td>
+<td>Word/Excel process spawning <code>powershell.exe</code> or <code>cmd.exe</code></td>
+</tr>
+<tr>
+<td><strong><code>T1078</code></strong></td>
+<td>Valid Accounts</td>
+<td>Initial Access / Persistence</td>
+<td><code>impossible_travel</code>, <code>anomalous_login</code></td>
+<td>VPN/IdP authentication from unusual geolocation or dormant account</td>
+</tr>
+<tr>
+<td><strong><code>T1059.001</code></strong></td>
+<td>Command and Scripting: PowerShell</td>
+<td>Execution</td>
+<td><code>lolbas_powershell_encoded</code></td>
+<td>EDR detects Base64-encoded command line (<code>-enc</code>, <code>-w hidden</code>)</td>
+</tr>
+<tr>
+<td><strong><code>T1027</code></strong></td>
+<td>Obfuscated Files or Information</td>
+<td>Defense Evasion</td>
+<td><code>payload_obfuscation_detected</code></td>
+<td>High-entropy process command lines or obfuscated script blocks</td>
+</tr>
+<tr>
+<td><strong><code>T1110.003</code></strong></td>
+<td>Password Spraying</td>
+<td>Credential Access</td>
+<td><code>ad_password_spray</code></td>
+<td>$&gt;5$ distinct failed logins (<code>0xC000006A</code>) within 3 minutes from single IP</td>
+</tr>
+<tr>
+<td><strong><code>T1110.001</code></strong></td>
+<td>Password Guessing / Brute Force</td>
+<td>Credential Access</td>
+<td><code>ad_brute_force</code></td>
+<td>Rapid repeated failed authentications targeting a single user account</td>
+</tr>
+<tr>
+<td><strong><code>T1558.003</code></strong></td>
+<td>Kerberoasting</td>
+<td>Credential Access</td>
+<td><code>ad_kerberoasting</code></td>
+<td>Rapid requests for Kerberos TGS tickets with RC4 encryption (<code>0x17</code>) for service SPNs</td>
+</tr>
+<tr>
+<td><strong><code>T1558.004</code></strong></td>
+<td>AS-REP Roasting</td>
+<td>Credential Access</td>
+<td><code>ad_asreproast</code></td>
+<td>Kerberos AS-REQ ticket request for accounts with <code>DONT_REQ_PREAUTH</code> enabled</td>
+</tr>
+<tr>
+<td><strong><code>T1003.006</code></strong></td>
+<td>DCSync Directory Replication</td>
+<td>Credential Access</td>
+<td><code>ad_dcsync</code></td>
+<td>DRSUAPI <code>DsGetNCChanges</code> RPC call originating from a non-DC host</td>
+</tr>
+<tr>
+<td><strong><code>T1087.002</code></strong></td>
+<td>Domain Account Discovery</td>
+<td>Discovery</td>
+<td><code>ad_recon_ldap_query</code></td>
+<td>LDAP search queries enumerating high-privilege groups (<code>Domain Admins</code>)</td>
+</tr>
+<tr>
+<td><strong><code>T1135</code></strong></td>
+<td>Network Share Discovery</td>
+<td>Discovery</td>
+<td><code>ad_recon_share_enum</code></td>
+<td>High-frequency RPC/SMB enumeration of available network shares</td>
+</tr>
+<tr>
+<td><strong><code>T1046</code></strong></td>
+<td>Network Service Discovery</td>
+<td>Discovery</td>
+<td><code>network_port_scan</code></td>
+<td>Firewall/EDR detects TCP SYN scan across subnet</td>
+</tr>
+<tr>
+<td><strong><code>T1018</code></strong></td>
+<td>Remote System Discovery</td>
+<td>Discovery</td>
+<td><code>host_discovery_ping_sweep</code></td>
+<td>Rapid ICMP/NetBIOS sweeps across internal IP segments</td>
+</tr>
+<tr>
+<td><strong><code>T1021.002</code></strong></td>
+<td>SMB / Windows Admin Shares</td>
+<td>Lateral Movement</td>
+<td><code>ad_lateral_movement_smb</code></td>
+<td>Authenticated connects to administrative shares (<code>ADMIN$</code>, <code>C$</code>, <code>IPC$</code>)</td>
+</tr>
+<tr>
+<td><strong><code>T1021.006</code></strong></td>
+<td>Windows Remote Management (WinRM)</td>
+<td>Lateral Movement</td>
+<td><code>lateral_movement_winrm</code></td>
+<td>EDR detects <code>wsmprovhost.exe</code> spawning child processes over port 5985/5986</td>
+</tr>
+<tr>
+<td><strong><code>T1213</code></strong></td>
+<td>Data from Information Repositories</td>
+<td>Collection</td>
+<td><code>pacs_bulk_query</code>, <code>ehr_dump</code></td>
+<td>High-volume DICOM <code>C-FIND</code> queries or SQL database <code>SELECT *</code> dumps</td>
+</tr>
+<tr>
+<td><strong><code>T1005</code></strong></td>
+<td>Data from Local System</td>
+<td>Collection</td>
+<td><code>local_staging_search</code></td>
+<td>Automated file discovery scripts searching for <code>.docx</code>, <code>.pdf</code>, <code>.kdbx</code></td>
+</tr>
+<tr>
+<td><strong><code>T1074.001</code></strong></td>
+<td>Local Staging</td>
+<td>Collection</td>
+<td><code>staging_directory_archive</code></td>
+<td>Large files consolidated into <code>C:\Windows\Temp</code> or <code>C:\Users\Public</code></td>
+</tr>
+<tr>
+<td><strong><code>T1560.001</code></strong></td>
+<td>Archive via Utility (7-Zip)</td>
+<td>Collection</td>
+<td><code>compression_utility_7zip</code></td>
+<td>Invocation of <code>7z.exe</code> or <code>rar.exe</code> with password protection flags (<code>-p</code>)</td>
+</tr>
+<tr>
+<td><strong><code>T1071.001</code></strong></td>
+<td>Web Protocols: C2 Beaconing</td>
+<td>Command and Control</td>
+<td><code>beaconing_c2_http</code></td>
+<td>Regular interval outbound HTTPS connections to low-reputation domain</td>
+</tr>
+<tr>
+<td><strong><code>T1490</code></strong></td>
+<td>Inhibit System Recovery</td>
+<td>Impact</td>
+<td><code>vssadmin_shadow_delete</code></td>
+<td>Execution of <code>vssadmin.exe delete shadows /all /quiet</code> or <code>wbadmin</code></td>
+</tr>
+<tr>
+<td><strong><code>T1486</code></strong></td>
+<td>Data Encrypted for Impact</td>
+<td>Impact</td>
+<td><code>ransomware_canary_trip</code></td>
+<td>Rapid file modifications, extension renaming, and canary file modification</td>
+</tr>
+<tr>
+<td><strong><code>T1498</code></strong></td>
+<td>Network Denial of Service</td>
+<td>Impact</td>
+<td><code>dos_syn_flood</code></td>
+<td>Volumetric packet floods overwhelming hospital network links</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>Tactic Progression Scoring in <code>librax-correlation</code></h2>
+<p>LibraX models attack campaigns as forward-progressing state machines:</p>
+<pre><code>Recon / Initial Access ──► Credential Access ──► Lateral Movement ──► Collection ──► Impact
+</code></pre>
+<p>When two signals share a substantive entity (e.g. host or identity) and represent <strong>sequential tactical progression</strong> (e.g. <code>Credential Access</code> followed by <code>Lateral Movement</code>), the correlation engine awards a <strong>+0.25 progression bonus</strong> ($w_{\text{stage}}$). This boosts the confidence of multi-stage attack detection while suppressing uncoordinated noise.</p></div><div class="section-divider"><h1>Active Directory Heuristics (<code>detectors/directory.rs</code>)</h1>
+<p>Active Directory is the primary identity store in enterprise environments and the central target for advanced threat actors. The <code>directory.rs</code> module contains specialized detection logic tuned specifically for Active Directory attack mechanics.</p>
+<hr />
+<h2>Targeted AD Attack Scenarios</h2>
+<h3>1. AS-REP Roasting (<code>T1558.004</code>)</h3>
+<ul>
+<li><strong>Mechanism:</strong> Accounts with <code>"Do not require Kerberos preauthentication"</code> (<code>DONT_REQ_PREAUTH</code>) configured allow anyone to request an AS-REP ticket without knowing the password. The encrypted ticket can then be cracked offline.</li>
+<li><strong>Log Signature:</strong></li>
+<li>Event ID: <code>4768</code> (Kerberos Authentication Ticket / AS-REQ).</li>
+<li>Pre-Authentication Type: <code>0</code> (None).</li>
+<li>Ticket Encryption Type: <code>0x17</code> (RC4-HMAC-MD5) or <code>0x12</code> (AES256).</li>
+<li><strong>Detector Rule:</strong>
+  <code>rust
+  if event.activity == "kerberos_as_req" 
+     &amp;&amp; event.preauth_type == Some(0) 
+     &amp;&amp; event.ticket_encryption.is_some() {
+      // Emit ad_asreproast signal
+  }</code></li>
+</ul>
+<hr />
+<h3>2. Kerberoasting (<code>T1558.003</code>)</h3>
+<ul>
+<li><strong>Mechanism:</strong> Any authenticated domain user can request Kerberos Service Tickets (TGS-REQ) for service accounts registered with a Service Principal Name (SPN). The ticket is encrypted with the service account's NTLM password hash and cracked offline.</li>
+<li><strong>Log Signature:</strong></li>
+<li>Event ID: <code>4769</code> (Kerberos Service Ticket Request / TGS-REQ).</li>
+<li>Target SPN: Not <code>krbtgt</code>, not a machine account (<code>*$</code> format).</li>
+<li>Ticket Encryption: Requested as <code>0x17</code> (RC4-HMAC) even when domain supports AES.</li>
+<li>Multi-Target Burst: Single user requesting multiple high-privilege SPNs (e.g. <code>MSSQLSvc/</code>, <code>HTTP/</code>) in short succession.</li>
+<li><strong>Detector Rule:</strong>
+  Tracks distinct service ticket requests per user in a 120-second sliding window. When count $&gt; 3$, emits <code>ad_kerberoasting</code>.</li>
+</ul>
+<hr />
+<h3>3. DCSync Directory Secret Replication (<code>T1003.006</code>)</h3>
+<ul>
+<li><strong>Mechanism:</strong> The Directory Replication Service Remote Protocol (MS-DRSR / DRSUAPI) allows domain controllers to synchronize user credentials and Kerberos keys via <code>DsGetNCChanges</code>. Attackers using tools like Impacket's <code>secretsdump.py</code> or Mimikatz simulate a DC to pull all domain password hashes.</li>
+<li><strong>Log Signature:</strong></li>
+<li>Protocol: DRSUAPI RPC binding.</li>
+<li>API Invocation: <code>DsGetNCChanges</code> / <code>IDL_DRSGetNCChanges</code>.</li>
+<li>Source Verification: The requesting IP or host is <strong>not</strong> in the domain controller asset registry (<code>!is_domain_controller(src_ip)</code>).</li>
+<li><strong>Detector Rule:</strong>
+  <code>rust
+  if event.activity == "drsuapi_replication" &amp;&amp; !is_dc_asset(event.src_ip) {
+      // Critical severity signal: Immediate Domain Compromise Attempt
+      emit_signal("ad_dcsync", Severity::Critical);
+  }</code></li>
+</ul>
+<hr />
+<h3>4. SMB Lateral Movement &amp; Admin Shares (<code>T1021.002</code>)</h3>
+<ul>
+<li><strong>Mechanism:</strong> Adversaries with compromised administrator credentials connect to remote administrative shares (<code>ADMIN$</code>, <code>C$</code>, <code>IPC$</code>) to stage binaries or execute commands via Service Control Manager (<code>svcctl</code>) or Scheduled Tasks (<code>atsvc</code>).</li>
+<li><strong>Log Signature:</strong></li>
+<li>Event ID: <code>5140</code> / <code>5145</code> (Network share object access) or Samba <code>full_audit</code> connect.</li>
+<li>Share Name: <code>\\*\ADMIN$</code> or <code>\\*\C$</code>.</li>
+<li>Access Mask: Write/Modify permissions granted over network socket.</li>
+<li><strong>Detector Rule:</strong>
+  Emits <code>ad_lateral_movement_smb</code> linking source client host and target destination server.</li>
+</ul></div><div class="section-divider"><h1>Identity &amp; Entity Resolution (<code>librax-entities</code>)</h1>
+<p>The <code>librax-entities</code> crate bridges the gap between raw identifier strings in logs and canonical, real-world assets and identities across the enterprise.</p>
+<hr />
+<h2>Entity Hierarchy &amp; Schema (<code>EntityRef</code>)</h2>
+<p>Entities in LibraX are categorized into strongly-typed variants:</p>
+<pre><code class="language-rust">pub enum EntityKind {
+    Host,          // Physical server, virtual machine, or workstation
+    User,          // Human principal, service account, or machine account
+    Ip,            // Internal or external network IP address
+    File,          // Executable, script, or document artifact
+    Process,       // Running process instance with PID
+    Hospital,      // Healthcare campus or operational facility
+}
+
+pub struct EntityRef {
+    pub kind: EntityKind,
+    pub id: String,         // Canonical unique identifier
+    pub name: String,       // Human-readable display label
+}
+</code></pre>
+<hr />
+<h2>Canonical Resolution Strategies</h2>
+<pre><code>[Architecture Flowchart Diagram]
+graph TD
+    RAW_USER[&quot;Raw User Log String&lt;br/&gt;'LIBRAX\\jdoe', 'jdoe@librax.local', 'jdoe'&quot;] --&gt; USER_RES[&quot;User Identity Mesh&quot;]
+    USER_RES --&gt; CANON_USER[&quot;Canonical User: 'USR-0482 (jdoe)'&lt;br/&gt;Role: Domain Admin&lt;br/&gt;Campus: St. Jude&quot;]
+
+    RAW_HOST[&quot;Raw Host String&lt;br/&gt;'172.30.0.10', 'dc01', 'dc01.librax.local'&quot;] --&gt; HOST_RES[&quot;Host Asset Mesh&quot;]
+    HOST_RES --&gt; CANON_HOST[&quot;Canonical Host: 'HOST-001 (dc01.librax.local)'&lt;br/&gt;Criticality: Tier-1 Domain Controller&quot;]
+
+    RAW_IP[&quot;Raw IP Address&lt;br/&gt;'185.220.101.47'&quot;] --&gt; IP_RES[&quot;IP &amp; Threat Registry&quot;]
+    IP_RES --&gt; CANON_IP[&quot;Canonical IP: '185.220.101.47'&lt;br/&gt;Classification: External Adversary C2&quot;]
+</code></pre>
+<h3>1. Host Asset Resolution</h3>
+<ul>
+<li><strong>Multi-Identifier Aliasing:</strong> Resolves NetBIOS names (<code>DC01</code>), FQDNs (<code>dc01.librax.local</code>), DHCP IP leases (<code>172.30.0.10</code>), and MAC addresses to a single persistent asset record.</li>
+<li><strong>Criticality Classification:</strong></li>
+<li><strong>Tier-1 (Critical):</strong> Domain Controllers, Root CAs, Key Management Services ($2.0\times$ risk multiplier).</li>
+<li><strong>Tier-2 (High):</strong> Electronic Health Record (EHR) databases, PACS diagnostic servers ($1.8\times$ risk multiplier).</li>
+<li><strong>Tier-3 (Medium):</strong> Nurse stations, administrative workstations, jumpboxes ($1.2\times$ risk multiplier).</li>
+<li><strong>Tier-4 (Standard):</strong> Standard user endpoints, guest networks ($1.0\times$).</li>
+</ul>
+<h3>2. User &amp; Identity Mesh</h3>
+<ul>
+<li><strong>Account Disambiguation:</strong> Maps Kerberos Principal Names (<code>jdoe@LIBRAX.LOCAL</code>), Down-Level Logon names (<code>LIBRAX\jdoe</code>), and SAMAccountNames (<code>jdoe</code>) to a single person.</li>
+<li><strong>Privilege Tracking:</strong> Maintains active directory group memberships (<code>Domain Admins</code>, <code>Enterprise Admins</code>, <code>Account Operators</code>, <code>HelpDesk</code>).</li>
+<li><strong>Activity Context:</strong> Tracks standard working hours, standard login hosts, and standard campus locations to identify impossible travel and anomalous access.</li>
+</ul></div><div class="section-divider"><h1>Evidence Graph &amp; Attack Path (<code>librax-graph</code> &amp; <code>librax-correlation</code>)</h1>
+<p>The graph engine constructs a mathematical model of an ongoing cyber incident. Instead of presenting a linear list of disconnected alerts, LibraX represents the incident as an interconnected <strong>Directed Acyclic Graph (DAG)</strong> of entities, actions, and forensic evidence.</p>
+<hr />
+<h2>Graph Data Model</h2>
+<p>The <code>IncidentGraph</code> is backed by <code>petgraph::graph::DiGraph</code>:</p>
+<pre><code>[Architecture Flowchart Diagram]
+graph LR
+    ATTACKER[&quot;Attacker IP&lt;br/&gt;172.30.0.66&quot;] --&gt; |&quot;T1110.003 Password Spray&quot;| DC[&quot;Domain Controller&lt;br/&gt;dc01.librax.local&quot;]
+    DC --&gt; |&quot;T1558.003 Kerberoast&quot;| SVC_ACCT[&quot;User: svc_backup&quot;]
+    SVC_ACCT --&gt; |&quot;T1021.002 SMB Admin Share&quot;| FILE_SRV[&quot;File Server&lt;br/&gt;fs01.librax.local&quot;]
+    FILE_SRV --&gt; |&quot;T1486 Ransomware&quot;| EHR_DB[(&quot;EHR Patient Database&lt;br/&gt;Critical Asset&quot;)]
+</code></pre>
+<h3>Graph Node Schema</h3>
+<p>Nodes in the graph represent either an <strong>Entity</strong> or a <strong>SecuritySignal</strong>:
+- <strong>Entity Node:</strong> Identity, Host, IP socket, File hash, or Database.
+- <strong>Signal Node:</strong> Detection event with MITRE technique ID, timestamp, and severity.</p>
+<h3>Graph Edge Types</h3>
+<p>Edges represent directional causal relationships between nodes:
+- <code>ExecutedOn</code>: Process executed on target host.
+- <code>AuthenticatedAs</code>: Network connection authenticated with specific user identity.
+- <code>Targeted</code>: Signal or command targeted a destination host/service.
+- <code>TraversedNetwork</code>: Traffic flowed across network sockets.
+- <code>GeneratedSignal</code>: Raw telemetry event supported a detection rule.</p>
+<hr />
+<h2>Temporal &amp; Spatial Correlation Algorithm</h2>
+<p>The <code>Correlator</code> in <code>librax-correlation</code> clusters signals using multi-factor link scoring:</p>
+<p>$$\text{LinkScore}(S_a, S_b) = \sum_{i \in \text{Factors}} w_i \cdot \text{MatchStrength}_i(S_a, S_b)$$</p>
+<table>
+<thead>
+<tr>
+<th>Factor</th>
+<th>Description</th>
+<th>Weight ($w_i$)</th>
+<th>Required Substantive?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Identity ($F_{\text{id}}$)</strong></td>
+<td>Signals share the same user account or principal</td>
+<td><strong>0.40</strong></td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><strong>Host ($F_{\text{host}}$)</strong></td>
+<td>Signals occurred on the same physical/virtual host</td>
+<td><strong>0.35</strong></td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><strong>Network ($F_{\text{net}}$)</strong></td>
+<td>Signals share source or destination IP/port</td>
+<td><strong>0.30</strong></td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><strong>Shared Evidence ($F_{\text{ev}}$)</strong></td>
+<td>Signals cite overlapping raw event IDs</td>
+<td><strong>0.40</strong></td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><strong>ATT&amp;CK Progression ($F_{\text{stage}}$)</strong></td>
+<td>Signals represent sequential MITRE tactics</td>
+<td><strong>0.25</strong></td>
+<td>No (Co-factor only)</td>
+</tr>
+<tr>
+<td><strong>Temporal ($F_{\text{time}}$)</strong></td>
+<td>Signals occurred within sliding window (45 min)</td>
+<td><strong>0.15</strong></td>
+<td>No (Co-factor only)</td>
+</tr>
+</tbody>
+</table>
+<h3>The Substantive Link Rule</h3>
+<blockquote>
+<p><strong>Golden Rule of LibraX Correlation:</strong> Temporal proximity and stage ordering are true of any two alerts in a busy enterprise SOC. Therefore, a link is <strong>only created</strong> if at least one <strong>substantive factor</strong> (Identity, Host, Network, or Shared Evidence) is present.</p>
+</blockquote>
+<hr />
+<h2>Blast Radius Calculation</h2>
+<p>The <code>librax-graph</code> module traverses the DAG from compromised nodes outward:
+1. <strong>Direct Blast Radius:</strong> All hosts, identities, and databases directly touched by adversary commands.
+2. <strong>Reachable Blast Radius:</strong> All hosts accessible via active Kerberos tickets, open firewall paths, and cached administrative credentials.
+3. <strong>Operational Impact Rating:</strong> Computes total beds, clinical workstations, and patient databases at risk.</p></div><div class="section-divider"><h1>Multi-Dimensional Risk Engine (<code>librax-risk</code>)</h1>
+<p>The <code>librax-risk</code> crate calculates explainable, multi-dimensional risk scores ($0–100$) for every incident. Rather than returning an opaque magic number, every score comes with a complete mathematical breakdown of its contributing inputs.</p>
+<hr />
+<h2>Risk Mathematical Model</h2>
+<p>$$\text{OverallRisk} = \min\left(100.0, \, \left(\text{ThreatScore} \times \text{AssetCriticality} \times \text{BlastMultiplier}\right) + \text{VelocityBonus}\right)$$</p>
+<pre><code>[Architecture Flowchart Diagram]
+flowchart LR
+    subgraph Inputs[&quot;Risk Dimension Inputs&quot;]
+        SIGS[&quot;Signal Severities&lt;br/&gt;Critical=40, High=25, Med=10&quot;]
+        ASSET[&quot;Asset Criticality&lt;br/&gt;DC=2.0x, PACS=2.5x, Host=1.0x&quot;]
+        BLAST[&quot;Blast Radius&lt;br/&gt;Compromised Entities Multiplier&quot;]
+        VEL[&quot;Attack Velocity&lt;br/&gt;Stage Transitions / Minute&quot;]
+    end
+
+    subgraph Calculation[&quot;Calculation Engine&quot;]
+        MATH[&quot;Multi-Factor Scoring Formula&quot;]
+    end
+
+    subgraph Output[&quot;Explainable Risk Assessment&quot;]
+        SCORE[&quot;Overall Risk Score (0-100)&quot;]
+        BREAKDOWN[&quot;Score Breakdown Card&quot;]
+    end
+
+    SIGS --&gt; MATH
+    ASSET --&gt; MATH
+    BLAST --&gt; MATH
+    VEL --&gt; MATH
+    MATH --&gt; SCORE
+    MATH --&gt; BREAKDOWN
+</code></pre>
+<hr />
+<h2>Risk Factors Breakdown</h2>
+<h3>1. Threat Confidence &amp; Signal Weights ($\text{ThreatScore}$)</h3>
+<p>Base severity is calculated from the set of distinct, non-duplicate detection signals:
+- $\text{Critical Signal}$: <strong>+40.0 pts</strong>
+- $\text{High Signal}$: <strong>+25.0 pts</strong>
+- $\text{Medium Signal}$: <strong>+10.0 pts</strong>
+- $\text{Low Signal}$: <strong>+3.0 pts</strong></p>
+<p>$$\text{ThreatScore} = 1.0 - \prod_{s \in \text{Signals}} (1.0 - \text{Weight}(s))$$</p>
+<h3>2. Asset Criticality Multiplier ($\text{AssetCriticality}$)</h3>
+<p>The maximum criticality among all entities involved in the incident graph:</p>
+<table>
+<thead>
+<tr>
+<th>Asset Type</th>
+<th>Criticality Tier</th>
+<th>Multiplier</th>
+<th>Clinical / Business Justification</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>PACS / Diagnostic Imaging</strong></td>
+<td>Tier-1 Mission Critical</td>
+<td><strong>$2.5\times$</strong></td>
+<td>Direct impact on patient diagnosis and surgical scheduling</td>
+</tr>
+<tr>
+<td><strong>Domain Controller (DC)</strong></td>
+<td>Tier-1 Enterprise Core</td>
+<td><strong>$2.0\times$</strong></td>
+<td>Total administrative compromise of all domain credentials</td>
+</tr>
+<tr>
+<td><strong>EHR Patient Database</strong></td>
+<td>Tier-2 High Impact</td>
+<td><strong>$1.8\times$</strong></td>
+<td>Risk of massive patient record exfiltration and HIPAA breach</td>
+</tr>
+<tr>
+<td><strong>Nurse Station / Clinical Host</strong></td>
+<td>Tier-3 Medium Impact</td>
+<td><strong>$1.3\times$</strong></td>
+<td>Local hospital ward disruption</td>
+</tr>
+<tr>
+<td><strong>Standard User Workstation</strong></td>
+<td>Tier-4 Standard Endpoint</td>
+<td><strong>$1.0\times$</strong></td>
+<td>Contained single-user endpoint compromise</td>
+</tr>
+</tbody>
+</table>
+<h3>3. Blast Radius Multiplier ($\text{BlastMultiplier}$)</h3>
+<p>Scales based on the count of confirmed compromised entities ($N_{\text{entities}}$):
+$$\text{BlastMultiplier} = 1.0 + \left(0.15 \times \min(N_{\text{entities}}, 6)\right)$$</p>
+<h3>4. Attack Velocity Bonus ($\text{VelocityBonus}$)</h3>
+<p>If an adversary progresses through 3 or more MITRE tactics within 10 minutes, an acceleration penalty of <strong>+10.0 pts</strong> is added to reflect an active, rapid intrusion.</p>
+<hr />
+<h2>Risk Score Tones in UI</h2>
+<ul>
+<li><strong>Critical ($80–100$):</strong> Immediate containment required. Active domain takeover or ransomware staging.</li>
+<li><strong>High ($60–79$):</strong> Confirmed credential access and lateral movement.</li>
+<li><strong>Medium ($40–59$):</strong> Reconnaissance, password spraying, or anomalous privilege usage.</li>
+<li><strong>Low ($1–39$):</strong> Isolated suspicious activity or single-endpoint alert.</li>
+</ul></div><div class="section-divider"><h1>Analyst AI &amp; Briefing Synthesis (<code>librax-ai</code>)</h1>
+<p>The <code>librax-ai</code> crate generates automated, human-readable analyst briefings for security incidents. Unlike standard LLM implementations that can hallucinate details, LibraX enforces a <strong>deterministic citation engine</strong> where every generated claim must be provably backed by raw telemetry evidence.</p>
+<hr />
+<h2>Briefing Architecture &amp; Statement Schema</h2>
+<pre><code>[Architecture Flowchart Diagram]
+graph TD
+    INC[&quot;Correlated Incident &amp; Graph&quot;] --&gt; ENGINE[&quot;DeterministicAnalyst Engine&quot;]
+    ENGINE --&gt; SYNTH[&quot;Structured Briefing Synthesis&quot;]
+
+    SYNTH --&gt; SEC1[&quot;Executive Summary&lt;br/&gt;Attack vector, current stage, containment state&quot;]
+    SYNTH --&gt; SEC2[&quot;Key Facts&lt;br/&gt;Assertions citing exact raw Event IDs&quot;]
+    SYNTH --&gt; SEC3[&quot;Inferences&lt;br/&gt;Deductions based on MITRE ATT&amp;CK progression&quot;]
+    SYNTH --&gt; SEC4[&quot;Key Unknowns&lt;br/&gt;Gaps due to sensor blind spots&quot;]
+    SYNTH --&gt; SEC5[&quot;Investigation Guidance&lt;br/&gt;Concrete next steps for SOC tier-1/tier-2&quot;]
+</code></pre>
+<h3>Statement Data Model (<code>Statement</code>)</h3>
+<pre><code class="language-rust">pub struct Statement {
+    pub text: String,                      // Narrative sentence
+    pub assertion: Assertion,              // Fact, Inference, Unknown
+    pub citations: Vec&lt;String&gt;,            // Cited Event IDs proving this statement
+    pub confidence: f32,                   // 0.0 - 1.0 confidence score
+    pub entities: Vec&lt;EntityRef&gt;,          // Referenced entities
+}
+
+pub enum Assertion {
+    Fact,       // Supported directly by cited telemetry events
+    Inference,  // Logical deduction from graph structure &amp; ATT&amp;CK stage
+    Unknown,    // Critical missing context or potential blind spot
+}
+</code></pre>
+<hr />
+<h2>Zero-Hallucination Guarantees</h2>
+<ol>
+<li><strong>Strict Provenance Verification:</strong></li>
+<li>A statement marked <code>Assertion::Fact</code> cannot be emitted unless its <code>citations</code> array contains at least one valid <code>event_id</code> present in the incident's retained evidence pool.</li>
+<li><strong>Deterministic Template Engine:</strong></li>
+<li><code>DeterministicAnalyst</code> maps graph paths and signal sequences to high-clarity natural language templates with precision variable substitution.</li>
+<li><strong>LLM Pluggability via <code>AnalystEngine</code> Trait:</strong></li>
+<li>External LLM models (e.g., Anthropic Claude, OpenAI GPT, Google Gemini, Ollama) can implement the <code>AnalystEngine</code> trait. Any model output must pass the assertion verification filter before being presented to the analyst.</li>
+</ol>
+<hr />
+<h2>Sample Synthesized Briefing</h2>
+<pre><code class="language-markdown">### Executive Summary
+Multi-stage active directory intrusion originating from external IP 172.30.0.66 targeting 
+domain controller dc01.librax.local. Adversary successfully harvested credentials via Kerberoasting 
+and initiated lateral movement towards file server fs01.
+
+### Confirmed Facts
+- [FACT] Attacker executed password spray against 12 accounts via NTLM (Events: EVT-1001, EVT-1002)
+- [FACT] Kerberos service ticket requested for SPN MSSQLSvc/db01 (Event: EVT-1014)
+- [FACT] Administrative share ADMIN$ accessed on fs01.librax.local (Event: EVT-1025)
+
+### Inferences &amp; Lateral Trajectory
+- [INFERENCE] Attacker holds plaintext credentials for account svc_backup.
+- [INFERENCE] File staging detected in C:\Windows\Temp indicates impending payload execution.
+
+### Key Unknowns
+- [UNKNOWN] EDR sensor offline on host ws-radiology-04 (potential unmonitored lateral hop).
+</code></pre></div><div class="section-divider"><h1>Response Engine &amp; Simulation (<code>librax-response</code>)</h1>
+<p>The <code>librax-response</code> crate generates, evaluates, and safely simulates automated containment actions to neutralize active threats while safeguarding healthcare business operations.</p>
+<hr />
+<h2>Safety-First Philosophy</h2>
+<p>In critical environments like hospitals and industrial control systems, an automated response that isolates a life-saving medical device or shuts down an emergency room database is more dangerous than the malware itself.</p>
+<p>LibraX addresses this with three safety gates:
+1. <strong>Simulation by Default:</strong> All containment actions run in non-destructive simulation mode first.
+2. <strong>Blast Radius Impact Analysis:</strong> Predicts the operational consequences of containment (e.g. "Isolating <code>pacs01</code> will disconnect 14 clinical workstations and stop MRI transfers").
+3. <strong>Named Human Approval Gate:</strong> High-impact destructive actions require explicit approval with an analyst identifier.</p>
+<hr />
+<h2>Containment Action Types</h2>
+<pre><code class="language-rust">pub enum ResponseActionKind {
+    IsolateHost,            // Cut network connectivity via EDR / switch port
+    DisableAccount,         // Lock Active Directory user account
+    RevokeKerberosTickets,  // Invalidate Kerberos TGT and TGS tickets
+    BlockIpAtFirewall,      // Add edge firewall rule dropping external IP
+    KillProcessTree,        // Terminate suspicious process lineage
+    QuarantineFile,         // Move binary artifact to secure vault
+}
+</code></pre>
+<pre><code>[Architecture Flowchart Diagram]
+graph TD
+    INC[&quot;Incident Risk &amp; Graph&quot;] --&gt; PLAYBOOK[&quot;Response Playbook Selector&quot;]
+    PLAYBOOK --&gt; ACT1[&quot;Action: Isolate Host ws-billing-01&quot;]
+    PLAYBOOK --&gt; ACT2[&quot;Action: Disable Account svc_backup&quot;]
+    PLAYBOOK --&gt; ACT3[&quot;Action: Block IP 185.220.101.47&quot;]
+
+    ACT1 --&gt; SIM[&quot;Simulation Engine&quot;]
+    ACT2 --&gt; SIM
+    ACT3 --&gt; SIM
+
+    SIM --&gt; PREDICT[&quot;Predict Side-Effects &amp; Blast Radius&quot;]
+    PREDICT --&gt; GATE{Approval Gate}
+    GATE --&gt; |&quot;Low Impact / Tier-1&quot;| AUTO[&quot;Auto-Simulate OK&quot;]
+    GATE --&gt; |&quot;High Impact / Tier-2&quot;| REQ[&quot;Require Named Approver&quot;]
+</code></pre>
+<hr />
+<h2>Action Execution Lifecycle</h2>
+<pre><code class="language-rust">pub struct ResponseAction {
+    pub action_id: String,
+    pub kind: String,                      // &quot;isolate_host&quot;, &quot;disable_account&quot;, etc.
+    pub target: EntityRef,                 // Target entity to be contained
+    pub incident_id: String,
+    pub confidence: f32,                   // Confidence that action is necessary
+    pub rationale: String,                 // Why this action was recommended
+    pub requires_approval: boolean,        // Whether human Tier-2 signature is needed
+    pub status: ResponseStatus,            // Recommended, AwaitingApproval, Simulated, Declined
+    pub simulated_at: Option&lt;DateTime&lt;Utc&gt;&gt;,
+    pub result: Option&lt;String&gt;,            // Simulation output or execution report
+}
+</code></pre>
+<h3>Simulation Output Example</h3>
+<pre><code class="language-json">{
+  &quot;action_id&quot;: &quot;ACT-8841&quot;,
+  &quot;kind&quot;: &quot;disable_account&quot;,
+  &quot;target&quot;: { &quot;kind&quot;: &quot;user&quot;, &quot;id&quot;: &quot;USR-092&quot;, &quot;name&quot;: &quot;svc_backup&quot; },
+  &quot;status&quot;: &quot;simulated&quot;,
+  &quot;simulated_at&quot;: &quot;2026-09-14T14:48:12Z&quot;,
+  &quot;result&quot;: &quot;[SIMULATED] Would execute Active Directory lockout for principal 'svc_backup@LIBRAX.LOCAL' across all 2 Domain Controllers. Active Kerberos TGTs (3) would be invalidated. 0 clinical services depend on this account.&quot;
+}
+</code></pre></div><div class="section-divider"><h1>Docker Lab &amp; Active Directory Architecture (<code>lab/</code>)</h1>
+<p>LibraX includes a self-contained, real-world Active Directory attack lab in <code>lab/</code> that stands up a genuine Samba 4 Domain Controller, streams real audit logs into LibraX, and executes automated multi-phase offensive campaigns.</p>
+<hr />
+<h2>Lab Network Topology</h2>
+<p>All lab containers execute on a private Docker bridge network (<code>labnet: 172.30.0.0/24</code>):</p>
+<pre><code>[Architecture Flowchart Diagram]
+graph TD
+    subgraph LabNet[&quot;Docker Private Network (172.30.0.0/24)&quot;]
+        ATTACKER[&quot;attacker container&lt;br/&gt;172.30.0.66&lt;br/&gt;Impacket, Smbclient, Kerberos&quot;]
+        DC[&quot;dc container (Samba 4 AD DC)&lt;br/&gt;172.30.0.10&lt;br/&gt;Kerberos, LDAP, SMB, DNS&quot;]
+        SHIPPER[&quot;shipper container (Python 3)&lt;br/&gt;Tails /var/log/samba&quot;]
+        API[&quot;api container (Rust Axum)&lt;br/&gt;172.30.0.20&lt;br/&gt;Port 8080&quot;]
+        FRONTEND[&quot;frontend container (Nginx)&lt;br/&gt;172.30.0.30&lt;br/&gt;Port 3000&quot;]
+    end
+
+    ATTACKER --&gt; |&quot;Real Attacks (SMB, Kerberos, RPC)&quot;| DC
+    DC -.-&gt; |&quot;Shared Volume /var/log/samba&quot;| SHIPPER
+    SHIPPER --&gt; |&quot;POST /api/v1/events&quot;| API
+    FRONTEND --&gt; |&quot;Proxy /api/v1&quot;| API
+</code></pre>
+<hr />
+<h2>Container Breakdown</h2>
+<table>
+<thead>
+<tr>
+<th>Service</th>
+<th>Image Base</th>
+<th>Role &amp; Purpose</th>
+<th>Key Ports / Volumes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>dc</code></td>
+<td>Ubuntu / Samba 4</td>
+<td>Real Active Directory Domain Controller (<code>LIBRAX.LOCAL</code>) with LDAP, Kerberos, DNS, and SMB audit logging</td>
+<td><code>53</code>, <code>88</code>, <code>389</code>, <code>445</code>, <code>636</code><br/>Volume: <code>/var/log/samba</code></td>
+</tr>
+<tr>
+<td><code>attacker</code></td>
+<td>Debian / Python</td>
+<td>Offensive attack runner executing staged intrusion campaigns</td>
+<td><code>attack.sh</code>, Impacket suite, <code>smbclient</code></td>
+</tr>
+<tr>
+<td><code>shipper</code></td>
+<td>Python 3 Alpine</td>
+<td>Zero-latency audit log shipper tailing Samba JSON logs and forwarding to LibraX ingest API</td>
+<td><code>ship.py</code><br/>Mounts <code>/var/log/samba</code></td>
+</tr>
+<tr>
+<td><code>api</code></td>
+<td>Rust / Alpine (Multi-stage)</td>
+<td>LibraX core correlation engine and Axum API</td>
+<td><code>8080:8080</code></td>
+</tr>
+<tr>
+<td><code>frontend</code></td>
+<td>Node / Nginx Alpine</td>
+<td>React 18 SOC analyst workstation interface</td>
+<td><code>3000:80</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>Samba AD Audit Configuration (<code>lab/dc/entrypoint.sh</code>)</h2>
+<p>Samba is configured with enterprise audit logging modules:
+- <code>auth_json_audit</code>: Emits one structured JSON log line per Kerberos/NTLM authentication attempt.
+- <code>authz_json_audit</code>: Emits structured JSON logs for service authorization and access control checks.
+- <code>vfs objects = full_audit</code>: Audits file share tree connects (<code>ADMIN$</code>, <code>C$</code>, <code>IPC$</code>) formatted as <code>%u|%I|connect|%T|%S</code>.
+- <code>log level = 3 auth_json_audit:3 authz_json_audit:3 dsdb_json_audit:3</code>: Enables high-fidelity directory service auditing.</p></div><div class="section-divider"><h1>Adversary Campaign &amp; Log Shipper (<code>lab/attacker/</code> &amp; <code>lab/shipper/</code>)</h1>
+<p>The adversary container (<code>attacker</code>) executes real-world offensive techniques against the lab Domain Controller using standard offensive tooling. The shipper container (<code>shipper</code>) captures the generated audit stream in real time and pipes it into the LibraX ingest API.</p>
+<hr />
+<h2>Adversary Campaign Phases (<code>lab/attacker/attack.sh</code>)</h2>
+<p>The attack runner executes a 5-stage staged attack campaign with realistic inter-phase delays:</p>
+<pre><code>[Architecture Flowchart Diagram]
+sequenceDiagram
+    autonumber
+    participant Attacker as attacker (172.30.0.66)
+    participant DC as Samba AD DC (172.30.0.10)
+    participant Shipper as ship.py
+    participant LibraX as LibraX Engine (:8080)
+
+    Note over Attacker,DC: Phase 1: Password Spraying
+    Attacker-&gt;&gt;DC: smbclient NTLM spray across users.txt
+    DC--&gt;&gt;Shipper: auth_json_audit (NTLM 0xC000006A)
+    Shipper-&gt;&gt;LibraX: POST /api/v1/events (ad_password_spray signal)
+
+    Note over Attacker,DC: Phase 2: AS-REP Roasting
+    Attacker-&gt;&gt;DC: Impacket GetNPUsers.py (AS-REQ no pre-auth)
+    DC--&gt;&gt;Shipper: auth_json_audit (AS-REQ type 0)
+    Shipper-&gt;&gt;LibraX: POST /api/v1/events (ad_asreproast signal)
+
+    Note over Attacker,DC: Phase 3: Kerberoasting
+    Attacker-&gt;&gt;DC: Impacket GetUserSPNs.py (TGS-REQ for MSSQLSvc)
+    DC--&gt;&gt;Shipper: authz_json_audit (TGS-REQ RC4 ticket)
+    Shipper-&gt;&gt;LibraX: POST /api/v1/events (ad_kerberoasting signal)
+
+    Note over Attacker,DC: Phase 4: DCSync Directory Secret Extraction
+    Attacker-&gt;&gt;DC: Impacket secretsdump.py (DRSUAPI DsGetNCChanges)
+    DC--&gt;&gt;Shipper: Samba debug replication log
+    Shipper-&gt;&gt;LibraX: POST /api/v1/events (ad_dcsync Critical signal)
+
+    Note over Attacker,DC: Phase 5: SMB Lateral Movement
+    Attacker-&gt;&gt;DC: smbclient connect to ADMIN$ &amp; C$
+    DC--&gt;&gt;Shipper: full_audit tree connect
+    Shipper-&gt;&gt;LibraX: POST /api/v1/events (ad_lateral_movement_smb signal)
+
+    Note over LibraX: Correlation Engine merges signals into Incident #1
+</code></pre>
+<hr />
+<h2>Log Shipper Mechanics (<code>lab/shipper/ship.py</code>)</h2>
+<p>The Python log shipper runs as a continuous daemon tailing <code>/var/log/samba</code>:</p>
+<pre><code class="language-python"># Regex parser for Samba full_audit VFS connects
+FULL_AUDIT = re.compile(
+    r&quot;([^|\s][^|]*)\|([0-9a-fA-F:.]+)\|connect\|(ok|fail)\|([^|]+?)\s*$&quot;
+)
+
+# Detects DRSUAPI replication from non-DC hosts
+GETNCCHANGES = re.compile(r&quot;getncchanges|DsGetNCChanges&quot;, re.IGNORECASE)
+</code></pre>
+<ol>
+<li><strong>Stateful Tailing:</strong> Tracks file byte offsets across <code>/var/log/samba/log.samba</code> and per-client log files.</li>
+<li><strong>Schema Mapping:</strong> Converts JSON authentication payloads and VFS connect strings into <code>RawEvent</code> JSON payloads.</li>
+<li><strong>HTTP Batching:</strong> Emits micro-batches to <code>http://api:8080/api/v1/events</code> every 1.0 second.</li>
+</ol></div><div class="section-divider"><h1>REST &amp; WebSocket API Specification (<code>services/librax-api</code>)</h1>
+<p>The <code>librax-api</code> service provides HTTP REST endpoints and WebSocket channels for telemetry ingestion, dashboard metrics, incident lifecycle management, and response containment.</p>
+<p>Base URL: <code>http://localhost:8080/api/v1</code></p>
+<hr />
+<h2>Endpoint Reference</h2>
+<h3>1. Ingest Telemetry Batch</h3>
+<pre><code class="language-http">POST /api/v1/events
+Content-Type: application/json
+</code></pre>
+<p><strong>Request Body:</strong></p>
+<pre><code class="language-json">[
+  {
+    &quot;source_type&quot;: &quot;active_directory&quot;,
+    &quot;source_id&quot;: &quot;dc-samba-01&quot;,
+    &quot;payload&quot;: &quot;{\&quot;type\&quot;:\&quot;Authentication\&quot;,\&quot;serviceDescription\&quot;:\&quot;Kerberos\&quot;,\&quot;clientAddress\&quot;:\&quot;ipv4:172.30.0.66\&quot;}&quot;
+  }
+]
+</code></pre>
+<p><strong>Response:</strong></p>
+<pre><code class="language-json">{
+  &quot;accepted&quot;: 1,
+  &quot;rejected&quot;: 0,
+  &quot;unsupported&quot;: 0,
+  &quot;signals&quot;: 1,
+  &quot;incidents&quot;: 1
+}
+</code></pre>
+<hr />
+<h3>2. Get SOC Dashboard Overview</h3>
+<pre><code class="language-http">GET /api/v1/dashboard
+</code></pre>
+<p><strong>Response:</strong></p>
+<pre><code class="language-json">{
+  &quot;hospitals&quot;: 18,
+  &quot;endpoints&quot;: 10482,
+  &quot;assets&quot;: 10612,
+  &quot;identities&quot;: 2639,
+  &quot;events_received&quot;: 1420,
+  &quot;events_retained&quot;: 1420,
+  &quot;events_per_minute&quot;: 24.5,
+  &quot;signals_total&quot;: 30,
+  &quot;signals_by_severity&quot;: { &quot;critical&quot;: 8, &quot;high&quot;: 19, &quot;medium&quot;: 3, &quot;low&quot;: 0, &quot;info&quot;: 0 },
+  &quot;incidents_total&quot;: 3,
+  &quot;incidents_critical&quot;: 3,
+  &quot;incidents_live&quot;: 1,
+  &quot;top_incident&quot;: {
+    &quot;incident_id&quot;: &quot;INC-0001&quot;,
+    &quot;title&quot;: &quot;Multi-Stage Active Directory Intrusion&quot;,
+    &quot;overall_risk&quot;: 95.4,
+    &quot;severity&quot;: &quot;critical&quot;,
+    &quot;live&quot;: true
+  },
+  &quot;reduction&quot;: {
+    &quot;events&quot;: 1420,
+    &quot;signals&quot;: 30,
+    &quot;incidents&quot;: 3,
+    &quot;critical_incidents&quot;: 3,
+    &quot;events_per_incident&quot;: 473
+  }
+}
+</code></pre>
+<hr />
+<h3>3. List Incidents</h3>
+<pre><code class="language-http">GET /api/v1/incidents
+</code></pre>
+<p><strong>Query Parameters:</strong>
+- <code>severity</code> (optional): Filter by minimum severity (<code>critical</code>, <code>high</code>, <code>medium</code>, <code>low</code>).
+- <code>live_only</code> (optional): Boolean filter for active incidents.</p>
+<hr />
+<h3>4. Get Incident Details</h3>
+<pre><code class="language-http">GET /api/v1/incidents/{incident_id}
+</code></pre>
+<p>Returns the full incident record, including:
+- Correlated signal list with MITRE technique codes.
+- Mathematical risk score breakdown.
+- Directed graph nodes and edges.
+- Structured AI briefing with cited event IDs.
+- Available containment playbooks.</p>
+<hr />
+<h3>5. Simulate Containment Action</h3>
+<pre><code class="language-http">POST /api/v1/actions/{action_id}/simulate
+Content-Type: application/json
+</code></pre>
+<p><strong>Request Body:</strong></p>
+<pre><code class="language-json">{
+  &quot;approver&quot;: &quot;analyst@librax.security&quot;
+}
+</code></pre>
+<p><strong>Response:</strong></p>
+<pre><code class="language-json">{
+  &quot;action&quot;: {
+    &quot;action_id&quot;: &quot;ACT-8841&quot;,
+    &quot;status&quot;: &quot;simulated&quot;,
+    &quot;result&quot;: &quot;[SIMULATED] Would isolate host ws-billing-01 across EDR sensor mesh.&quot;
+  },
+  &quot;narrative&quot;: &quot;Containment action verified and simulated.&quot;,
+  &quot;approved_by&quot;: &quot;analyst@librax.security&quot;
+}
+</code></pre>
+<hr />
+<h3>6. Indicator of Compromise (IOC) Lookup</h3>
+<pre><code class="language-http">GET /api/v1/intel/lookup?q={query}
+</code></pre>
+<p>Queries MD5, SHA256, IPv4, or domain against internal and global threat feeds.</p></div><div class="section-divider"><h1>Frontend Architecture &amp; SOC Interface (<code>frontend/</code>)</h1>
+<p>The LibraX user interface is a high-density, real-time Security Operations Center (SOC) single-page application built with <strong>React 18</strong>, <strong>TypeScript 5.7</strong>, and <strong>Vite 6</strong>.</p>
+<hr />
+<h2>UI Component Hierarchy</h2>
+<pre><code>frontend/src/
+├── App.tsx                    # Shell, Topbar, Routing &amp; Live Telemetry Ticker
+├── api.ts                     # Strongly-typed HTTP API Client
+├── types.ts                   # TypeScript interfaces matching Rust models
+├── hooks.ts                   # useAsync, useInterval &amp; Polling logic
+├── index.css                  # Enterprise SOC Design System
+└── components/
+    ├── Overview.tsx           # Dashboard, Alert Reduction Funnel &amp; Incident Queue
+    ├── IncidentDetail.tsx     # Incident Deep-Dive, Briefings, Graph &amp; Containment
+    ├── AttackGraph.tsx        # Interactive SVG Directed Graph HUD
+    ├── AttackLauncher.tsx     # Threat Scenario Execution Range &amp; Progress
+    ├── EventSearch.tsx        # Raw Telemetry Filter &amp; Log Inspector
+    ├── Intel.tsx              # IOC Search, File Reputation &amp; Feed Explorer
+    ├── Sources.tsx            # Ingest Pipeline Health &amp; Sensor Coverage
+    ├── common.tsx             # Panel, SeverityTag, VerdictBadge, Loading, Empty
+    └── icons.tsx              # Bespoke SVG Cyber &amp; Entity Icons
+</code></pre>
+<hr />
+<h2>Key Views &amp; Features</h2>
+<h3>1. Alert Reduction Funnel (<code>Overview.tsx</code>)</h3>
+<p>Visualizes the SOC signal reduction metric:
+$$\text{Raw Events} \xrightarrow{\text{Detection}} \text{Security Signals} \xrightarrow{\text{Correlation}} \text{Actionable Incidents}$$
+Achieves an average <strong>$98.5\%$ noise reduction</strong>, surfacing high-confidence incident packages to human analysts.</p>
+<h3>2. Interactive SVG Attack Graph (<code>AttackGraph.tsx</code>)</h3>
+<ul>
+<li>Renders the <code>IncidentGraph</code> DAG dynamically.</li>
+<li>Color-codes nodes by entity type (User, Host, IP, File) and severity.</li>
+<li>Highlights adversary lateral movement paths and critical clinical assets in real time.</li>
+</ul>
+<h3>3. Transparent AI Briefing Panel (<code>IncidentDetail.tsx</code>)</h3>
+<ul>
+<li>Renders assertion tags (<code>[FACT]</code>, <code>[INFERENCE]</code>, <code>[UNKNOWN]</code>).</li>
+<li>Includes interactive citation links that allow analysts to click any statement and instantly inspect the raw supporting log in the telemetry drawer.</li>
+</ul>
+<h3>4. Containment Playbook Controls (<code>IncidentDetail.tsx</code>)</h3>
+<ul>
+<li>Provides one-click simulation for host isolation, credential revocation, and IP blocking.</li>
+<li>Enforces Tier-2 human analyst identity entry for high-impact actions.</li>
+</ul></div><div class="section-divider"><h1>Getting Started &amp; Runbook</h1>
+<p>This guide covers setting up, building, running, and verifying the LibraX platform locally and via Docker.</p>
+<hr />
+<h2>Prerequisites</h2>
+<ul>
+<li><strong>Rust:</strong> <code>1.85+</code> (with <code>cargo</code> and <code>rustc</code>)</li>
+<li><strong>Node.js:</strong> <code>20+</code> or <code>22+</code> (with <code>npm</code>)</li>
+<li><strong>Python:</strong> <code>3.10+</code> (for log shipper &amp; MkDocs)</li>
+<li><strong>Docker &amp; Docker Compose:</strong> Latest Docker Desktop / Engine</li>
+</ul>
+<hr />
+<h2>1. Running the Live Attack Lab (Recommended)</h2>
+<p>To run the complete environment with a real Active Directory Domain Controller, offensive attack runner, log shipper, backend API, and frontend console:</p>
+<pre><code class="language-bash">docker compose -f lab/docker-compose.yml up --build
+</code></pre>
+<h3>Accessing Services:</h3>
+<ul>
+<li><strong>Frontend SOC Console:</strong> <a href="http://localhost:3000">http://localhost:3000</a></li>
+<li><strong>Backend REST API:</strong> <a href="http://localhost:8080/api/v1/dashboard">http://localhost:8080/api/v1/dashboard</a></li>
+<li><strong>Documentation Site:</strong> Run <code>python -m mkdocs serve</code> (see section 4)</li>
+</ul>
+<hr />
+<h2>2. Running Locally (Development Mode)</h2>
+<h3>Step 1: Start Backend API</h3>
+<pre><code class="language-bash">cargo run --bin librax-api
+</code></pre>
+<p>The API server starts listening on <code>http://127.0.0.1:8080</code>.</p>
+<h3>Step 2: Start Frontend Dev Server</h3>
+<pre><code class="language-bash">cd frontend
+npm install
+npm run dev
+</code></pre>
+<p>The Vite dev server starts on <code>http://localhost:3000</code>.</p>
+<hr />
+<h2>3. Running the Test Suite</h2>
+<p>LibraX maintains an extensive integration and unit test suite across all crates:</p>
+<pre><code class="language-bash"># Run all workspace unit and integration tests
+cargo test --workspace
+
+# Test specific detection rules
+cargo test -p librax-detection
+
+# Test correlation engine and temporal links
+cargo test -p librax-correlation
+
+# Test response playbooks and simulation gates
+cargo test -p librax-response
+</code></pre>
+<hr />
+<h2>4. Serving Documentation via MkDocs</h2>
+<p>To serve this complete technical documentation website locally:</p>
+<pre><code class="language-bash"># Install mkdocs and material theme (if not already installed)
+python -m pip install mkdocs mkdocs-material
+
+# Start the MkDocs documentation server
+python -m mkdocs serve
+</code></pre>
+<p>Open <a href="http://127.0.0.1:8000">http://127.0.0.1:8000</a> in your browser to browse the full interactive documentation.</p>
+<p>To build static HTML documentation:</p>
+<pre><code class="language-bash">python -m mkdocs build
+</code></pre>
+<p>The static documentation is built to the <code>site/</code> directory.</p></div>
+</body>
+</html>

@@ -1,4 +1,4 @@
-//! Correlation behaviour over the real detection output.
+
 
 use std::sync::Arc;
 
@@ -66,7 +66,7 @@ fn the_cluster_explains_why_it_was_grouped() {
     assert!(reasons.contains("Same host"), "{reasons}");
     assert!(reasons.contains("ATT&CK progression"), "{reasons}");
 
-    // The named story entities must be among what ties it together.
+
     let names: Vec<String> = clusters[0]
         .shared_entities
         .iter()
@@ -106,7 +106,7 @@ fn proximity_in_time_alone_never_links() {
     let a = &pipeline.signals[0];
     let entities_a = pipeline.resolver.resolve_signal(a);
 
-    // Same instant, entirely unrelated entities and no shared evidence.
+
     let mut b = a.clone();
     b.signal_id = "SIG-unrelated-1".into();
     b.entities = vec![librax_types::EntityRef::user("someone.else")];

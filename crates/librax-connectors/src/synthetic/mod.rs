@@ -1,4 +1,4 @@
-//! Deterministic synthetic telemetry for the demo environment.
+
 
 pub mod attacks;
 pub mod scenario;
@@ -14,7 +14,7 @@ use serde_json::json;
 
 use crate::connector::{Connector, ConnectorError, ConnectorHealth};
 
-/// Benign domains the hospital fleet legitimately talks to.
+
 const BENIGN_DOMAINS: &[&str] = &[
     "update.microsoft.com",
     "epic-emr.internal",
@@ -23,15 +23,10 @@ const BENIGN_DOMAINS: &[&str] = &[
     "pharmacy-api.partner.example",
 ];
 
-/// Routine software on the fleet, taken from the indicator feed's own table.
-///
-/// Real hashes matter here: without them the file explorer shows the whole estate
-/// as UNKNOWN, and an analyst cannot tell "nobody has assessed this" apart from
-/// "the sensor did not report what it was".
+
 use librax_enrichment::FLEET_SOFTWARE as BENIGN_PROCESSES;
 
-/// Generates the background noise the SOC normally swims in, plus the scripted
-/// intrusion. Reproducible: same seed, same events, every run.
+
 pub struct TelemetryGenerator {
     inventory: Arc<Inventory>,
     rng: SplitMix64,
@@ -118,26 +113,25 @@ impl TelemetryGenerator {
         options[idx]
     }
 
-    /// A routine process as (name, sha256, md5), dropping the signer the feed
-    /// carries but the endpoint agent reports separately.
+
     fn choose_process(&mut self) -> (&'static str, &'static str, &'static str) {
         let idx = self.rng.range_usize(0, BENIGN_PROCESSES.len());
         let (name, sha256, md5, _signer) = BENIGN_PROCESSES[idx];
         (name, sha256, md5)
     }
 
-    /// `count` benign events, timestamped around `at`.
+
     pub fn noise_batch(&mut self, count: usize, at: DateTime<Utc>) -> Vec<RawEvent> {
         (0..count).filter_map(|_| self.noise_event(at)).collect()
     }
 
     fn noise_event(&mut self, at: DateTime<Utc>) -> Option<RawEvent> {
-        // Jitter within the second so events do not all share a timestamp.
+
         let jitter = chrono::Duration::milliseconds(self.rng.range(0, 1000) as i64);
         let at = at + jitter;
         let raw_id = self.next_id();
 
-        // Weighted mix, roughly matching the relative chattiness of real sources.
+
         let roll = self.rng.range(0, 1000);
         let (source_type, source_id, payload) = match roll {
             0..=339 => {
@@ -281,9 +275,8 @@ impl TelemetryGenerator {
                     }),
                 )
             }
-            // The remaining slice is low-grade nuisance: single failed logons and
-            // blocked outbound attempts. These produce real but low-severity
-            // signals, which is what the prioritisation engine has to survive.
+
+
             980..=991 => {
                 let host = self.pick_workstation()?;
                 let identity = self.pick_identity()?;
@@ -332,7 +325,7 @@ impl TelemetryGenerator {
         })
     }
 
-    /// The scripted intrusion, plus an unrelated volumetric attack.
+
     pub fn attack_chain(&self, start: DateTime<Utc>) -> Vec<RawEvent> {
         scenario::attack_chain(start)
     }
@@ -355,8 +348,7 @@ fn campus_suffix(asset: &Asset) -> String {
         .to_lowercase()
 }
 
-/// One synthetic source, exposed through the real [`Connector`] interface so the
-/// SDK is genuinely exercised rather than described.
+
 pub struct SyntheticSource {
     source_id: String,
     source_type: SourceType,
@@ -422,7 +414,7 @@ impl Connector for SyntheticSource {
     }
 }
 
-/// Every synthetic source in the demo environment.
+
 pub struct SyntheticFleet {
     sources: Vec<Arc<SyntheticSource>>,
     generator: Arc<Mutex<TelemetryGenerator>>,
@@ -439,7 +431,7 @@ impl SyntheticFleet {
         let sources = SourceType::all()
             .iter()
             .map(|&source_type| {
-                // EDR is the only source with a real coverage gap in the demo.
+
                 let (reporting, total) = if source_type == SourceType::Edr {
                     (covered, expected)
                 } else {

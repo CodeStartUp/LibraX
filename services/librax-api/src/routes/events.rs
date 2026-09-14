@@ -11,7 +11,7 @@ pub struct EventBatch {
     pub events: Vec<RawEvent>,
 }
 
-/// Accepts a batch of raw vendor events and runs the pipeline over them.
+
 pub async fn ingest(
     State(state): State<SharedState>,
     Json(batch): Json<EventBatch>,
@@ -27,7 +27,7 @@ pub async fn ingest(
 
 #[derive(Debug, Deserialize)]
 pub struct SignalQuery {
-    /// Lowest severity to include, e.g. `high`.
+
     pub min_severity: Option<String>,
     pub limit: Option<usize>,
 }
@@ -39,7 +39,7 @@ pub struct SignalsResponse {
     pub signals: Vec<SecuritySignal>,
 }
 
-/// Detections, newest first. This is the "before correlation" view.
+
 pub async fn signals(
     State(state): State<SharedState>,
     Query(query): Query<SignalQuery>,
@@ -70,7 +70,7 @@ pub async fn signals(
 
 #[derive(Debug, Deserialize)]
 pub struct EventSearchQuery {
-    /// Free text, matched against the message, activity, entities and addresses.
+
     pub q: Option<String>,
     pub source_type: Option<String>,
     pub source_id: Option<String>,
@@ -79,12 +79,12 @@ pub struct EventSearchQuery {
     pub user: Option<String>,
     pub process: Option<String>,
     pub hospital: Option<String>,
-    /// Only events that ended up as evidence behind a detection.
+
     pub evidence_only: Option<bool>,
     pub limit: Option<usize>,
 }
 
-/// One row in the event search results.
+
 #[derive(Serialize)]
 pub struct EventRow {
     pub event_id: String,
@@ -104,7 +104,7 @@ pub struct EventRow {
     pub md5: Option<String>,
     pub hospital: Option<String>,
     pub message: String,
-    /// Detections this event is evidence for, so a row can be pivoted from.
+
     pub signal_ids: Vec<String>,
 }
 
@@ -116,11 +116,7 @@ pub struct EventSearchResponse {
     pub events: Vec<EventRow>,
 }
 
-/// Full-text and faceted search over retained telemetry.
-///
-/// This is the log view an analyst falls back to when the correlated story is not
-/// enough, which is why it filters on the same facets the pipeline enriches with
-/// rather than on raw vendor field names.
+
 pub async fn search(
     State(state): State<SharedState>,
     Query(query): Query<EventSearchQuery>,
@@ -150,8 +146,7 @@ pub async fn search(
         let mut rows: Vec<EventRow> = Vec::new();
         let mut matched = 0usize;
 
-        // Newest first, and stop building rows once the page is full: the window
-        // holds tens of thousands of events and the analyst asked for one page.
+
         for event in soc.events.iter().rev() {
             if event.severity < floor {
                 continue;
@@ -225,7 +220,7 @@ fn row(event: &librax_types::CanonicalEvent, signal_ids: Vec<String>) -> EventRo
     }
 }
 
-/// Free-text match across the fields an analyst would paste into a search box.
+
 fn matches_text(event: &librax_types::CanonicalEvent, needle: &str) -> bool {
     let hit = |value: Option<&str>| value.is_some_and(|v| v.to_lowercase().contains(needle));
 
@@ -256,8 +251,7 @@ fn matches_text(event: &librax_types::CanonicalEvent, needle: &str) -> bool {
         }
     }
 
-    // Falls through to the raw payload, so a search for a domain or an attachment
-    // name works without the canonical model needing a field for each of them.
+
     event.attributes.values().any(|v| {
         v.as_str()
             .is_some_and(|s| s.to_lowercase().contains(needle))

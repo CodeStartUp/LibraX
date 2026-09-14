@@ -110,6 +110,48 @@
       "name": "Network Denial of Service",
       "tactics": ["impact"],
       "description": "Network bandwidth or connection capacity exhausted to deny availability."
+    },
+    {
+      "id": "T1110.001",
+      "name": "Password Guessing",
+      "tactics": ["credential_access"],
+      "description": "Repeated password guesses against one or more accounts until one succeeds."
+    },
+    {
+      "id": "T1558.003",
+      "name": "Kerberoasting",
+      "tactics": ["credential_access"],
+      "description": "Service tickets requested for accounts with an SPN so the returned ticket can be cracked offline."
+    },
+    {
+      "id": "T1558.004",
+      "name": "AS-REP Roasting",
+      "tactics": ["credential_access"],
+      "description": "Kerberos AS-REP requested for accounts that do not require pre-authentication, to crack the reply offline."
+    },
+    {
+      "id": "T1003.006",
+      "name": "DCSync",
+      "tactics": ["credential_access"],
+      "description": "Directory replication abused to pull password hashes directly from a domain controller."
+    },
+    {
+      "id": "T1087.002",
+      "name": "Domain Account Discovery",
+      "tactics": ["discovery"],
+      "description": "Enumeration of domain user accounts, often via LDAP or Kerberos, to plan credential attacks."
+    },
+    {
+      "id": "T1135",
+      "name": "Network Share Discovery",
+      "tactics": ["discovery"],
+      "description": "Enumeration of shared folders and named pipes exposed over SMB."
+    },
+    {
+      "id": "T1021.002",
+      "name": "SMB / Windows Admin Shares",
+      "tactics": ["lateral_movement"],
+      "description": "Valid accounts used with SMB administrative shares to access and move between systems."
     }
   ]
 }

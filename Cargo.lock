@@ -824,6 +824,7 @@ dependencies = [
  "librax-normalizer",
  "librax-types",
  "serde",
+ "serde_json",
  "tracing",
 ]
 

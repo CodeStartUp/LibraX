@@ -1,12 +1,5 @@
-//! A tiny deterministic PRNG.
-//!
-//! The demo environment must be byte-for-byte reproducible from a seed, and it
-//! must stay reproducible across dependency upgrades. SplitMix64 is a handful of
-//! arithmetic operations with a fixed, published definition, so pinning it here
-//! removes both the dependency and the risk of a generator changing under us.
 
-/// SplitMix64. Not cryptographic, and deliberately so: this only generates
-/// synthetic telemetry.
+
 #[derive(Debug, Clone)]
 pub struct SplitMix64 {
     state: u64,
@@ -25,7 +18,7 @@ impl SplitMix64 {
         z ^ (z >> 31)
     }
 
-    /// Uniform value in `[low, high)`. Returns `low` if the range is empty.
+
     pub fn range(&mut self, low: u64, high: u64) -> u64 {
         if high <= low {
             return low;
@@ -42,11 +35,11 @@ impl SplitMix64 {
     }
 
     pub fn next_f64(&mut self) -> f64 {
-        // 53 significant bits, the usual trick for a uniform [0, 1).
+
         (self.next_u64() >> 11) as f64 / (1u64 << 53) as f64
     }
 
-    /// True with probability `permille / 1000`.
+
     pub fn chance_permille(&mut self, permille: u64) -> bool {
         self.range(0, 1000) < permille
     }

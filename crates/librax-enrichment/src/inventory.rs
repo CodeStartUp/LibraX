@@ -3,9 +3,7 @@ use std::collections::HashMap;
 use librax_types::{EntityKind, EntityRef, SplitMix64};
 use serde::{Deserialize, Serialize};
 
-/// Fixed names used by the scripted demo intrusion. Detection, correlation and
-/// the simulator all refer to these, so the story always resolves against real
-/// inventory instead of invented entities.
+
 pub mod demo {
     pub const HOSPITAL: &str = "Campus-04";
     pub const USER: &str = "alice.hr";
@@ -14,7 +12,7 @@ pub mod demo {
     pub const ENDPOINT_IP: &str = "10.10.2.15";
     pub const ATTACKER_IP: &str = "185.220.101.47";
     pub const C2_DOMAIN: &str = "cdn-sync-update.net";
-    /// Lookalike domain the spear-phishing lure is sent from.
+
     pub const PHISHING_DOMAIN: &str = "secure-doc-review.top";
     pub const APP_SERVER: &str = "APP-SRV-07";
     pub const APP_SERVER_IP: &str = "10.20.7.7";
@@ -69,17 +67,16 @@ pub struct Hospital {
     pub region: String,
 }
 
-/// What an asset runs, which decides how the console draws it and what a
-/// containment action would actually mean for it.
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Platform {
     Windows,
     Linux,
-    /// Firewalls and switches: no agent, so no isolation action.
+
     NetworkAppliance,
-    /// Imaging and clinical devices. Regulated, frequently unpatchable, and never
-    /// something to isolate without clinical sign-off.
+
+
     MedicalDevice,
     Cloud,
 }
@@ -95,17 +92,15 @@ impl Platform {
         }
     }
 
-    /// Whether an endpoint agent can plausibly isolate it.
+
     pub fn agent_capable(self) -> bool {
         matches!(self, Platform::Windows | Platform::Linux)
     }
 }
 
 impl AssetRole {
-    /// The platform a role runs on.
-    ///
-    /// `index` breaks the tie for roles that are genuinely mixed in a hospital
-    /// estate, so the fleet is not implausibly uniform.
+
+
     pub fn platform(self, index: usize) -> Platform {
         match self {
             AssetRole::Workstation => Platform::Windows,
@@ -114,7 +109,7 @@ impl AssetRole {
             AssetRole::Pacs => Platform::MedicalDevice,
             AssetRole::CloudWorkload => Platform::Cloud,
             AssetRole::Database => Platform::Linux,
-            // Application servers are the genuinely mixed case.
+
             AssetRole::Server => {
                 if index % 3 == 0 {
                     Platform::Linux
@@ -133,12 +128,12 @@ pub struct Asset {
     pub platform: Platform,
     pub hospital: String,
     pub ip: String,
-    /// 0-100 business criticality.
+
     pub criticality: u8,
-    /// 0-100 sensitivity of the data it holds.
+
     pub data_sensitivity: u8,
-    /// Whether an EDR agent reports on this asset. Gaps create the coverage
-    /// percentage the SOC dashboard shows.
+
+
     pub edr_covered: bool,
 }
 
@@ -151,7 +146,7 @@ pub struct Identity {
     pub service_account: bool,
 }
 
-/// Knobs for the synthetic environment, driven by env vars in the demo.
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InventorySpec {
     pub seed: u64,
@@ -169,7 +164,7 @@ impl Default for InventorySpec {
     }
 }
 
-/// The synthetic hospital network, reproducible from a seed.
+
 #[derive(Debug, Clone)]
 pub struct Inventory {
     pub spec: InventorySpec,
@@ -206,7 +201,7 @@ const LAST_NAMES: &[&str] = &[
     "adams", "bose", "clark", "dutta", "evans", "ferro", "gupta", "hall", "iyer", "jain",
 ];
 
-/// Short site code used in machine names: `campus-04` becomes `C04`.
+
 fn campus_code(hospital_id: &str) -> String {
     let digits: String = hospital_id.chars().filter(|c| c.is_ascii_digit()).collect();
     format!(
@@ -234,8 +229,7 @@ impl Inventory {
         let mut assets = Vec::with_capacity(spec.endpoints + spec.hospitals * 8);
         let mut identities = Vec::new();
 
-        // Workstations, spread evenly across campuses. One slot is left for the
-        // demo endpoint installed below, so the fleet total matches `endpoints`.
+
         for i in 1..spec.endpoints {
             let hospital = &hospitals[i % hospitals.len()];
             let department = DEPARTMENTS[i % DEPARTMENTS.len()];
@@ -248,17 +242,12 @@ impl Inventory {
                 ip: format!("10.{}.{}.{}", 10 + i % 18, (i / 250) % 256, i % 250 + 2),
                 criticality: rng.range_u8(20, 45),
                 data_sensitivity: rng.range_u8(10, 40),
-                // ~94% agent coverage, which is what creates the blind-spot story.
+
                 edr_covered: rng.chance_permille(942),
             });
         }
 
-        // Per-campus infrastructure.
-        //
-        // Names carry the campus code. A shared numbering scheme would eventually
-        // collide with the documented demo servers, and a collision is worse than
-        // ugly here: two hospitals appearing to share a database server makes
-        // unrelated activity at both correlate on an entity they never shared.
+
         for (idx, hospital) in hospitals.iter().enumerate() {
             let code = campus_code(&hospital.id);
             let infra = [
@@ -287,8 +276,8 @@ impl Inventory {
                     role,
                     platform: role.platform(idx),
                     hospital: hospital.name.clone(),
-                    // One address per machine: sharing an address across a campus
-                    // would make entity resolution fold the whole rack into one host.
+
+
                     ip: format!("10.{}.{}.{}", 20 + idx, 1 + idx % 8, 2 + slot),
                     criticality,
                     data_sensitivity: sensitivity,
@@ -297,7 +286,7 @@ impl Inventory {
             }
         }
 
-        // Staff identities.
+
         for i in 0..(spec.endpoints / 4) {
             let first = FIRST_NAMES[i % FIRST_NAMES.len()];
             let last = LAST_NAMES[(i / FIRST_NAMES.len()) % LAST_NAMES.len()];
@@ -313,13 +302,10 @@ impl Inventory {
             });
         }
 
-        // Every campus administers its own databases. Without a local account per
-        // site, campuses whose generated staff happen to include no privileged user
-        // fall back to the one demo account, and unrelated activity at different
-        // hospitals then correlates on an identity they do not actually share.
+
         for hospital in &hospitals {
             if hospital.name == demo::HOSPITAL {
-                // install_demo_entities pins the documented account here.
+
                 continue;
             }
 
@@ -348,7 +334,7 @@ impl Inventory {
         inventory
     }
 
-    /// Guarantees the scripted intrusion always has real inventory to point at.
+
     fn install_demo_entities(&mut self) {
         let fixed_assets = [
             (
@@ -386,7 +372,7 @@ impl Inventory {
             (demo::PACS, AssetRole::Pacs, "10.24.5.12", 95, 98, false),
         ];
 
-        // Remove any generated collisions before inserting the canonical versions.
+
         self.assets.retain(|a| {
             !fixed_assets
                 .iter()
@@ -485,7 +471,7 @@ impl Inventory {
             .count()
     }
 
-    /// EDR agent coverage across workstations, as a percentage.
+
     pub fn edr_coverage(&self) -> (u32, u32, f32) {
         let workstations: Vec<_> = self
             .assets
@@ -530,9 +516,7 @@ mod tests {
         assert!(account.privileged);
     }
 
-    /// A shared administrator name is a correlation trap: two unrelated attacks at
-    /// two hospitals would link on an identity, and the analyst would be handed one
-    /// incident spanning campuses that have nothing to do with each other.
+
     #[test]
     fn every_campus_has_its_own_privileged_account() {
         let inv = Inventory::generate(InventorySpec::default());

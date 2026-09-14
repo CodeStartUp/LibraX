@@ -12,13 +12,15 @@ use serde::{Deserialize, Serialize};
 use crate::error::{ApiError, ApiResult};
 use crate::state::SharedState;
 
-/// Row shape for the incident queue.
+
 #[derive(Serialize)]
 pub struct IncidentSummary {
     pub incident_id: String,
     pub title: String,
     pub status: String,
     pub severity: Severity,
+
+    pub live: bool,
     pub overall_risk: f32,
     pub threat_confidence: f32,
     pub business_impact: f32,
@@ -37,6 +39,7 @@ fn summarise(incident: &Incident) -> IncidentSummary {
         title: incident.title.clone(),
         status: incident.status.label().to_string(),
         severity: incident.severity(),
+        live: incident.is_live(),
         overall_risk: incident.risk.overall_risk,
         threat_confidence: incident.risk.threat_confidence,
         business_impact: incident.risk.business_impact,
@@ -60,7 +63,7 @@ pub struct IncidentListResponse {
     pub incidents: Vec<IncidentSummary>,
 }
 
-/// The incident queue, most severe first.
+
 pub async fn list(State(state): State<SharedState>) -> Json<IncidentListResponse> {
     Json(state.read(|soc| {
         let mut incidents: Vec<IncidentSummary> = soc
@@ -82,7 +85,7 @@ pub async fn list(State(state): State<SharedState>) -> Json<IncidentListResponse
     }))
 }
 
-/// Runs `f` against the built incident with this id.
+
 fn with_incident<R>(
     state: &SharedState,
     id: &str,
@@ -102,9 +105,13 @@ fn with_incident<R>(
 pub struct IncidentDetail {
     #[serde(flatten)]
     pub incident: Incident,
-    /// Why correlation grouped these signals, for the "why connected?" panel.
+
+    pub live: bool,
+
+    pub severity: Severity,
+
     pub correlation_reasons: Vec<String>,
-    /// ATT&CK ids that were proposed and rejected as unrecognised.
+
     pub unmapped_techniques: Vec<String>,
     pub graph_node_count: usize,
     pub graph_edge_count: usize,
@@ -116,6 +123,8 @@ pub async fn detail(
 ) -> ApiResult<Json<IncidentDetail>> {
     with_incident(&state, &id, |built| {
         Json(IncidentDetail {
+            live: built.incident.is_live(),
+            severity: built.incident.severity(),
             incident: built.incident.clone(),
             correlation_reasons: built.correlation_reasons.clone(),
             unmapped_techniques: built.unmapped_techniques.clone(),
@@ -256,7 +265,7 @@ pub async fn briefing(
 pub struct ResponseListing {
     pub incident_id: String,
     pub playbooks: Vec<String>,
-    /// Stated plainly so the UI cannot imply otherwise.
+
     pub simulation_only: bool,
     pub actions: Vec<ResponseAction>,
 }
@@ -301,7 +310,7 @@ pub async fn responses(
 #[derive(Debug, Deserialize)]
 pub struct SimulateRequest {
     pub action_id: String,
-    /// Required for destructive actions. There is no bypass.
+
     pub approved_by: Option<String>,
 }
 
@@ -313,13 +322,13 @@ pub struct SimulateResponse {
     pub simulation_only: bool,
 }
 
-/// Simulates a containment action. Never performs a real one.
+
 pub async fn simulate(
     State(state): State<SharedState>,
     Path(id): Path<String>,
     Json(request): Json<SimulateRequest>,
 ) -> ApiResult<Json<SimulateResponse>> {
-    // Confirm the incident exists before touching any action.
+
     with_incident(&state, &id, |_| ())?;
 
     let outcome = state

@@ -12,15 +12,14 @@ pub struct GraphNode {
     pub kind_label: String,
     pub label: String,
     pub exposure: Exposure,
-    /// 0-100 business criticality, when the asset is known to us.
+
     pub criticality: Option<u8>,
     pub hospital: Option<String>,
-    /// What the asset runs, when the inventory knows it. Drives the icon the
-    /// console draws, and tells the analyst whether an agent action is even
-    /// possible on it.
+
+
     pub platform: Option<Platform>,
     pub platform_label: Option<String>,
-    /// Infrastructure that resolves to nothing we own.
+
     pub external: bool,
     pub event_count: u64,
     pub first_seen: DateTime<Utc>,
@@ -47,15 +46,15 @@ pub struct GraphEdge {
     pub confidence: f32,
     pub first_seen: DateTime<Utc>,
     pub last_seen: DateTime<Utc>,
-    /// The events that prove this relationship. Empty only for structural facts.
+
     pub evidence_event_ids: Vec<String>,
-    /// Detections that traversed this edge.
+
     pub signal_ids: Vec<String>,
-    /// True when the edge comes from asset inventory rather than telemetry.
+
     pub structural: bool,
 }
 
-/// How an asset came to be in scope.
+
 #[derive(Debug, Clone, Serialize)]
 pub struct Reach {
     pub node_id: String,
@@ -85,8 +84,7 @@ impl AttackGraph {
             .collect()
     }
 
-    /// Adjacency in both directions: an attacker who owns a host can move either
-    /// way along a relationship, so reachability ignores edge direction.
+
     fn adjacency(&self) -> HashMap<&str, Vec<&str>> {
         let mut map: HashMap<&str, Vec<&str>> = HashMap::new();
         for edge in &self.edges {
@@ -96,10 +94,7 @@ impl AttackGraph {
         map
     }
 
-    /// Breadth-first traversal from the confirmed nodes.
-    ///
-    /// Anything one hop out is `Reachable`; further out is `Potential`. Nothing
-    /// found this way is ever reported as compromised.
+
     pub fn reach_from(&self, origins: &[String], max_hops: usize) -> Vec<Reach> {
         let adjacency = self.adjacency();
         let mut seen: HashSet<&str> = HashSet::new();
@@ -142,7 +137,7 @@ impl AttackGraph {
         out
     }
 
-    /// Node ids marked as confirmed, which is what blast radius starts from.
+
     pub fn confirmed_node_ids(&self) -> Vec<String> {
         self.nodes
             .iter()
@@ -159,8 +154,7 @@ impl AttackGraph {
         self.edges.len()
     }
 
-    /// Every edge derived from telemetry must cite evidence. Used by tests and by
-    /// the API's self-check.
+
     pub fn unevidenced_edges(&self) -> Vec<&GraphEdge> {
         self.edges
             .iter()

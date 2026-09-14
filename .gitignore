@@ -3,5 +3,7 @@
 .env
 node_modules/
 dist/
+site/
 *.log
+*.zip
 .DS_Store

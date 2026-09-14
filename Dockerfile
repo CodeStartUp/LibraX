@@ -3,7 +3,7 @@
 # The workspace is built once and the wanted binary selected with SERVICE, so
 # `api` and `simulator` reuse the same cached dependency layer instead of
 # compiling the tree twice.
-FROM rust:1.85-slim-bookworm AS builder
+FROM rust:1.90-slim-bookworm AS builder
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends pkg-config libssl-dev ca-certificates \
