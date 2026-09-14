@@ -1,0 +1,115 @@
+{
+  "dataset": "enterprise-attack-subset",
+  "attack_version": "18.1",
+  "note": "Trimmed to the techniques the demo can evidence. Replace wholesale via MITRE_DATASET_PATH or MitreCatalog::from_json without touching code.",
+  "techniques": [
+    {
+      "id": "T1566.001",
+      "name": "Spearphishing Attachment",
+      "tactics": ["initial_access"],
+      "description": "A malicious attachment delivered by email to obtain execution on a target host."
+    },
+    {
+      "id": "T1204.002",
+      "name": "Malicious File",
+      "tactics": ["execution"],
+      "description": "A user opens a delivered file, executing attacker-controlled content."
+    },
+    {
+      "id": "T1078",
+      "name": "Valid Accounts",
+      "tactics": ["initial_access", "persistence", "privilege_escalation", "defense_evasion"],
+      "description": "Legitimate credentials used to access resources, blending in with normal activity."
+    },
+    {
+      "id": "T1059.001",
+      "name": "PowerShell",
+      "tactics": ["execution"],
+      "description": "PowerShell used to execute commands, frequently encoded to hinder inspection."
+    },
+    {
+      "id": "T1027",
+      "name": "Obfuscated Files or Information",
+      "tactics": ["defense_evasion"],
+      "description": "Command or payload content encoded to frustrate detection and review."
+    },
+    {
+      "id": "T1071.001",
+      "name": "Web Protocols",
+      "tactics": ["command_and_control"],
+      "description": "Command and control tunnelled over HTTP or HTTPS to blend with web traffic."
+    },
+    {
+      "id": "T1046",
+      "name": "Network Service Discovery",
+      "tactics": ["discovery"],
+      "description": "Scanning for reachable hosts and listening services inside the network."
+    },
+    {
+      "id": "T1018",
+      "name": "Remote System Discovery",
+      "tactics": ["discovery"],
+      "description": "Enumerating other hosts on the network to plan movement."
+    },
+    {
+      "id": "T1110.003",
+      "name": "Password Spraying",
+      "tactics": ["credential_access"],
+      "description": "A small set of passwords tried against many accounts to avoid lockout thresholds."
+    },
+    {
+      "id": "T1021.006",
+      "name": "Windows Remote Management",
+      "tactics": ["lateral_movement"],
+      "description": "WinRM used to authenticate to and execute on remote Windows hosts."
+    },
+    {
+      "id": "T1021",
+      "name": "Remote Services",
+      "tactics": ["lateral_movement"],
+      "description": "Valid accounts used with remote services to move between systems."
+    },
+    {
+      "id": "T1213",
+      "name": "Data from Information Repositories",
+      "tactics": ["collection"],
+      "description": "Bulk collection from databases and repositories holding business data."
+    },
+    {
+      "id": "T1005",
+      "name": "Data from Local System",
+      "tactics": ["collection"],
+      "description": "Files gathered from a compromised host prior to exfiltration."
+    },
+    {
+      "id": "T1074.001",
+      "name": "Local Data Staging",
+      "tactics": ["collection"],
+      "description": "Collected data consolidated into one location before removal."
+    },
+    {
+      "id": "T1560.001",
+      "name": "Archive via Utility",
+      "tactics": ["collection"],
+      "description": "A utility such as 7-Zip used to compress collected data for transfer."
+    },
+    {
+      "id": "T1490",
+      "name": "Inhibit System Recovery",
+      "tactics": ["impact"],
+      "description": "Shadow copies or backups destroyed to prevent restoration after encryption."
+    },
+    {
+      "id": "T1486",
+      "name": "Data Encrypted for Impact",
+      "tactics": ["impact"],
+      "description": "Files encrypted in place to interrupt operations and extract payment."
+    },
+    {
+      "id": "T1498",
+      "name": "Network Denial of Service",
+      "tactics": ["impact"],
+      "description": "Network bandwidth or connection capacity exhausted to deny availability."
+    }
+  ]
+}

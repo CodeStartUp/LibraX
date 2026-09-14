@@ -1,0 +1,14 @@
+[package]
+name = "librax-ai"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+librax-types.workspace = true
+librax-graph.workspace = true
+librax-mitre.workspace = true
+
+chrono.workspace = true
+serde.workspace = true

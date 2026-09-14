@@ -1,0 +1,12 @@
+[package]
+name = "librax-enrichment"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+librax-types.workspace = true
+
+chrono.workspace = true
+serde.workspace = true

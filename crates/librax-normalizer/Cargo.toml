@@ -1,0 +1,18 @@
+[package]
+name = "librax-normalizer"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+librax-types.workspace = true
+
+chrono.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+librax-connectors.workspace = true
+librax-enrichment.workspace = true

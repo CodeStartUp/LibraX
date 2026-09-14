@@ -1,0 +1,24 @@
+[package]
+name = "librax-incidents"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+librax-types.workspace = true
+librax-correlation.workspace = true
+librax-enrichment.workspace = true
+librax-entities.workspace = true
+librax-graph.workspace = true
+librax-mitre.workspace = true
+librax-risk.workspace = true
+
+chrono.workspace = true
+serde.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+librax-connectors.workspace = true
+librax-detection.workspace = true
+librax-normalizer.workspace = true
